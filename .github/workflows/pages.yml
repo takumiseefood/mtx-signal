@@ -1,0 +1,34 @@
+name: 發佈圖表網頁
+
+on:
+  push:
+    branches: [main]
+    paths: ["web/**"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: 準備網頁（附一份備用資料）
+        run: |
+          mkdir -p site && cp web/* site/
+          git fetch -q origin live && git show origin/live:data.json > site/data.json || true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

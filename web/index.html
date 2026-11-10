@@ -61,7 +61,7 @@
   <table><thead><tr><th>進場</th><th>出場</th><th>方向</th><th>進→出</th><th>原因</th><th>點數</th></tr></thead><tbody id="tr"></tbody></table>
 </div>
 <div class="err" id="err"></div>
-<p class="rules">策略：日K收盤 20MA&gt;120MA 做多、&lt; 做空，下一個交易時段（夜盤15:00）開盤執行；進場後以最有利價格 ∓ 2×ATR(14) 設防守價：防守價仍在虧損區稱「停損價」，越過進場價後稱「停利出場價」。離場後若均線方向不變，下一個交易時段再進場。資料來源：臺灣期貨交易所（日K含夜盤），每 10 分鐘更新。僅供參考，非投資建議。</p>
+<p class="rules">策略：日K收盤 20MA&gt;120MA 做多、&lt; 做空，下一個交易時段（夜盤15:00）開盤執行；進場後以最有利價格 ∓ 2×ATR(14) 設防守價：防守價仍在虧損區稱「停損價」，越過進場價後稱「停利出場價」。離場後若均線方向不變，下一個交易時段再進場。資料來源：臺灣期貨交易所（日K含夜盤），每 5 分鐘更新。僅供參考，非投資建議。</p>
 
 <script src="lwc.js"></script>
 <script>
@@ -91,7 +91,9 @@ function nextTradingDay(d){const x=new Date(d+'T00:00:00Z');do{x.setUTCDate(x.ge
 
 async function load(){
   try{
-    const j=await (await fetch('data.json?t='+Date.now(),{cache:'no-store'})).json();
+    let j;
+    try{j=await (await fetch('https://raw.githubusercontent.com/takumiseefood/mtx-signal/live/data.json?t='+Date.now(),{cache:'no-store'})).json()}
+    catch(e){j=await (await fetch('data.json?t='+Date.now(),{cache:'no-store'})).json()}
     const B=j.bars, st=j.status, lv=j.live;
     const candles=B.map(b=>({time:b.d,open:b.o,high:b.h,low:b.l,close:b.c}));
     let liveDate=null;
