@@ -113,6 +113,35 @@ def fetch_quote(market):
     return best[1] if best else None
 
 
+def fetch_minutes(market, log):
+    """期交所行情網 1 分K（本時段完整），組成 60 分K。回傳 {開始時間: bar}"""
+    q = fetch_quote(market)
+    if not q: return {}
+    sym = q["SymbolID"]
+    req = urllib.request.Request("https://mis.taifex.com.tw/futures/api/getChartData1M",
+                                 data=json.dumps({"SymbolID": sym}).encode(),
+                                 headers={**UA, "Content-Type": "application/json"})
+    d = json.loads(urllib.request.urlopen(req, timeout=20).read().decode()).get("RtData") or {}
+    ticks = d.get("Ticks") or []
+    if not ticks: return {}
+    base = dt.datetime.strptime(q["CDate"], "%Y%m%d").replace(tzinfo=TZ)
+    def stamp(T, shift=0):      # T＝該分鐘結束時間 HHMMSS → 該分鐘開始時間
+        hh, mm = int(T[:2]), int(T[2:4])
+        day = base + dt.timedelta(days=shift + (1 if market == "1" and hh < 15 else 0))
+        return day.replace(hour=hh, minute=mm) - dt.timedelta(minutes=1)
+    shift = -1 if stamp(ticks[-1][0]) > now() + dt.timedelta(minutes=10) else 0   # 日期若是隔日交易日就往回調
+    out = {}
+    for T, o, h, l, c, *_ in ticks:
+        k = bar_start(stamp(T, shift))
+        if not k: continue
+        o, h, l, c = float(o), float(h), float(l), float(c)
+        b = out.get(k)
+        if b is None: out[k] = dict(t=k, o=o, h=h, l=l, c=c)
+        else: b["h"] = max(b["h"], h); b["l"] = min(b["l"], l); b["c"] = c
+    log.append(f"60分 1分K補齊 {'日盤' if market == '0' else '夜盤'} {len(ticks)} 分鐘 → {len(out)} 根")
+    return out
+
+
 def update_live(bars, log):
     st = json.load(open(LIVE)) if os.path.exists(LIVE) else {"bars": {}, "sess": {}}
     t = now(); k = bar_start(t)
@@ -136,6 +165,12 @@ def update_live(bars, log):
                 if sl < prev["l"]: b["l"] = min(b["l"], sl)
             st["sess"] = {sess_key: dict(h=sh, l=sl)}
             log.append(f"60分即時 {k} 近似K棒 {b['c']:.0f}")
+    for mk in ("0", "1"):       # 用期交所 1 分K 覆蓋成精確的本時段 60 分K（含錯過的時段開頭）
+        try:
+            for kk, b in fetch_minutes(mk, log).items():
+                if kk not in bars: st["bars"][kk] = b
+        except Exception as ex:
+            log.append(f"60分 1分K失敗（{mk}）：{ex}")
     os.makedirs(SITE, exist_ok=True); json.dump(st, open(LIVE, "w"))
     return st["bars"], k
 
