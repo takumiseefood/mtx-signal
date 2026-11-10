@@ -73,7 +73,7 @@
 <div class="card"><div class="k" style="margin-bottom:4px">60分模擬 最近交易（1 口點數；停損＝虧損離場，出場＝停利離場）</div>
 <table><thead><tr><th>進場</th><th>出場</th><th>方向</th><th>進→出</th><th>原因</th><th>點數</th></tr></thead><tbody id="s60tr"></tbody></table></div>
 <div class="err" id="err"></div>
-<p class="rules">策略：日K收盤 20MA&gt;120MA 做多、&lt; 做空，下一個交易時段（夜盤15:00）開盤執行；進場後以最有利價格 ∓ 2×ATR(14) 設防守價：防守價仍在虧損區稱「停損價」，越過進場價後稱「停利出場價」。離場後若均線方向不變，下一個交易時段再進場。資料來源：臺灣期貨交易所（日K含夜盤），每 5 分鐘更新。僅供參考，非投資建議。</p>
+<p class="rules">策略：日K收盤 20MA&gt;120MA 做多、&lt; 做空，下一個交易時段（夜盤15:00）開盤執行；進場後以最有利價格 ∓ 2×ATR(14) 設防守價：防守價仍在虧損區稱「停損價」，越過進場價後稱「停利出場價」。離場後若均線方向不變，下一個交易時段再進場。資料來源：臺灣期貨交易所（日K含夜盤），圖表資料每 5 分鐘更新，報價每 10 秒更新。僅供參考，非投資建議。</p>
 
 <script src="lwc.js"></script>
 <script>
@@ -112,7 +112,7 @@ async function load(){
     if(lv){liveDate=nextTradingDay(B[B.length-1].d);const tw=new Date(Date.now()+8*3600e3).toISOString().slice(0,10);if(tw>B[B.length-1].d&&new Date(tw+'T00:00:00Z').getUTCDay()%6!==0&&lv.label.startsWith('日盤'))liveDate=tw;
       if(liveDate<=B[B.length-1].d)liveDate=nextTradingDay(B[B.length-1].d);
       candles.push({time:liveDate,open:lv.o,high:lv.h,low:lv.l,close:lv.c});}
-    sC.setData(candles);
+    sC.setData(candles);G.liveCandle=lv?candles[candles.length-1]:null;
     s20.setData(B.filter(b=>b.ma20!=null).map(b=>({time:b.d,value:b.ma20})));
     s120.setData(B.filter(b=>b.ma120!=null).map(b=>({time:b.d,value:b.ma120})));
     sH.setData(B.map(b=>({time:b.d,value:b.hist,color:b.hist>=0?'rgba(242,54,69,.75)':'rgba(8,153,129,.75)'})));
@@ -128,7 +128,7 @@ async function load(){
     if(!window._fitted){cMain.timeScale().setVisibleLogicalRange({from:candles.length-90,to:candles.length+2});window._fitted=1}
     // 數字
     const last=B[B.length-1],prev=B[B.length-2];
-    const price=lv?lv.c:last.c, ref=lv?last.c:prev.c, d=price-ref;
+    const price=lv?lv.c:last.c, ref=lv?last.c:prev.c, d=price-ref;G.st=st;G.ref=ref;G.updTxt=' 更新 '+j.updated;
     document.getElementById('px').textContent=f0(price);document.getElementById('px').className='px '+(d>=0?'up':'down');
     document.getElementById('chg').textContent=(d>=0?'▲ ':'▼ ')+f0(Math.abs(d))+'　'+(d/ref*100).toFixed(2)+'%';document.getElementById('chg').className='chg '+(d>=0?'up':'down');
     document.getElementById('upd').textContent=(lv?`${lv.label}・${lv.time.slice(0,2)}:${lv.time.slice(2,4)}`:`${last.d} 收盤`)+'　更新 '+j.updated;
@@ -150,7 +150,7 @@ async function load(){
     document.getElementById('ldif').textContent=f1(last.dif);document.getElementById('ldea').textContent=f1(last.dea);document.getElementById('lh').textContent=f1(last.hist);
     document.getElementById('lk').textContent=f1(last.K);document.getElementById('ld').textContent=f1(last.D);
     document.getElementById('tr').innerHTML=j.trades.map(t=>`<tr><td>${t.entry_date.slice(5).replace('-','/')}</td><td>${t.exit_date.slice(5).replace('-','/')}</td><td class="${t.side>0?'up':'down'}">${t.side>0?'多':'空'}</td><td>${f0(t.entry)}→${f0(t.exit)}</td><td class="${t.why.startsWith('出場')?'up':''}">${t.why.replace('（均線反轉）','*')}</td><td class="${t.pts>=0?'up':'down'}">${t.pts>=0?'+':''}${f0(t.pts)}</td></tr>`).join('');
-    drawSim60(j.sim60);
+    drawSim60(j.sim60);if(G.q&&Date.now()-G.qAt<30000)applyQuote(G.q);
     const bad=(j.log||[]).filter(x=>x.includes('失敗'));document.getElementById('err').textContent=bad.join('；');
   }catch(e){document.getElementById('err').textContent='資料載入失敗：'+e.message}
 }
@@ -168,6 +168,7 @@ function drawSim60(x){if(!x||!x.bars){document.getElementById('s60upd').textCont
   s60C.setMarkers(x.markers.map(m=>m.kind==='entry'?{time:ts(m.t),position:m.side>0?'belowBar':'aboveBar',color:m.side>0?UP:DOWN,shape:m.side>0?'arrowUp':'arrowDown',text:m.side>0?'多':'空'}
     :m.kind==='stop'?{time:ts(m.t),position:m.side>0?'belowBar':'aboveBar',color:'#9aa3b5',shape:'square',text:'停損'}:{time:ts(m.t),position:m.side>0?'aboveBar':'belowBar',color:'#f5a524',shape:'circle',text:'出場'}));
   const win=st.stop&&st.pos*(st.stop-st.entry)>0;if(s60line){s60C.removePriceLine(s60line);s60line=null}
+  G.s60=st;G.s60cs=cs;
   if(st.stop)s60line=s60C.createPriceLine({price:st.stop,color:win?'#f5a524':'#9aa3b5',lineWidth:1,lineStyle:2,title:win?'停利出場':'停損'});
   if(!window._f60){c60.timeScale().setVisibleLogicalRange({from:cs.length-80,to:cs.length+2});window._f60=1}
   const price=x.forming?x.forming.c:st.last_c;
@@ -183,6 +184,35 @@ function drawSim60(x){if(!x||!x.bars){document.getElementById('s60upd').textCont
   if(st.want!==st.pos){nc.classList.add(st.want>0?'go-long':'go-short');document.getElementById('s60next').innerHTML=`<span class="${st.want>0?'up':'down'}">${st.pos===0?'進場':'反手'}${side[st.want]}</span>`;document.getElementById('s60nextSub').textContent=`下一根60分K開盤，停損約 ${f0(2*st.atr)} 點`}
   else{document.getElementById('s60next').textContent=st.pos?`續抱${side[st.pos]}`:'觀望';document.getElementById('s60nextSub').textContent=st.pos?(win?`觸及 ${f0(st.stop)} 停利出場`:`觸及 ${f0(st.stop)} 停損`):'等均線訊號'}
   document.getElementById('s60tr').innerHTML=x.trades.map(t=>`<tr><td>${t.entry_t.slice(5).replace('-','/')}</td><td>${t.exit_t.slice(5).replace('-','/')}</td><td class="${t.side>0?'up':'down'}">${t.side>0?'多':'空'}</td><td>${f0(t.entry)}→${f0(t.exit)}</td><td class="${t.why.startsWith('出場')?'up':''}">${t.why}</td><td class="${t.pts>=0?'up':'down'}">${t.pts>=0?'+':''}${f0(t.pts)}</td></tr>`).join('');}
+const QURL='https://ws.api.cnyes.com/ws/api/v1/quote/quotes/TWF:MXF:FUTURES';   // 鉅亨網小台近月即時報價（允許網頁直接讀取）
+const G={};
+function twNow(){return new Date(Date.now()+8*3600e3)}   // 以 UTC 欄位讀取＝台北時間
+function sessionNow(){const t=twNow(),hm=t.getUTCHours()*100+t.getUTCMinutes(),dw=t.getUTCDay();
+  if(dw>=1&&dw<=5&&hm>=845&&hm<=1345)return '0';
+  if((dw>=1&&dw<=5&&hm>=1500)||(dw>=2&&dw<=6&&hm<=500))return '1';return null}
+function barStartNow(){const t=twNow(),h=t.getUTCHours(),mi=t.getUTCMinutes(),hm=h*100+mi,mins=h*60+mi;let s;
+  if(hm>=845&&hm<=1345)s=525+Math.min(4,Math.floor((mins-525)/60))*60;else if(hm>=1500)s=h*60;else if(hm<=500)s=Math.min(h,4)*60;else return null;
+  return t.toISOString().slice(0,10)+' '+String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+function applyQuote(q){const px=q.c,st=G.st;if(!st)return;
+  const d=px-G.ref;
+  document.getElementById('px').textContent=f0(px);document.getElementById('px').className='px '+(d>=0?'up':'down');
+  document.getElementById('chg').textContent=(d>=0?'▲ ':'▼ ')+f0(Math.abs(d))+'　'+(d/G.ref*100).toFixed(2)+'%';document.getElementById('chg').className='chg '+(d>=0?'up':'down');
+  document.getElementById('upd').textContent=`${q.m==='0'?'日盤':'夜盤'}即時・${q.time.slice(0,2)}:${q.time.slice(2,4)}:${q.time.slice(4,6)}`+G.updTxt;
+  if(G.liveCandle){const c=G.liveCandle;c.high=Math.max(c.high,px);c.low=Math.min(c.low,px);c.close=px;sC.update(c)}
+  if(st.pos)document.getElementById('posSub').textContent=`${st.entry_date} 進場 ${f0(st.entry)}｜浮動 ${f0((px-st.entry)*st.pos)} 點`;
+  if(st.stop)document.getElementById('stopSub').textContent=`距目前 ${f0(Math.abs(px-st.stop))} 點`;
+  const s6=G.s60,cs=G.s60cs;if(s6&&cs&&cs.length){const k=barStartNow();
+    if(k){const tt=ts(k);let c=cs[cs.length-1];
+      if(tt>c.time){c={time:tt,open:px,high:px,low:px,close:px};cs.push(c)}
+      if(tt===c.time){c.high=Math.max(c.high,px);c.low=Math.min(c.low,px);c.close=px;s60C.update(c)}}
+    if(s6.pos)document.getElementById('s60posSub').textContent=`${s6.entry_t.slice(5)} 進場 ${f0(s6.entry)}｜浮動 ${f0((px-s6.entry)*s6.pos)} 點`;
+    if(s6.stop)document.getElementById('s60stopSub').textContent=`距目前 ${f0(Math.abs(px-s6.stop))} 點`;}}
+async function tick(){const m=sessionNow();if(!QURL||!m||document.hidden)return;
+  try{const d=(await (await fetch(QURL,{cache:'no-store'})).json()).data[0];
+    const tt=new Date(d['200007']*1000+8*3600e3).toISOString().slice(11,19).replace(/:/g,'');
+    if(Date.now()/1000-d['200007']>600)return;   // 報價超過 10 分鐘沒動＝非交易中，不覆蓋
+    const q={m,c:+d['6'],h:+d['12'],l:+d['13'],o:+d['19'],time:tt};if(q.c){G.q=q;G.qAt=Date.now();applyQuote(q)}}catch(e){}}
+setInterval(tick,10000);setTimeout(tick,1500);document.addEventListener('visibilitychange',()=>{if(!document.hidden){load();tick()}});
 load();setInterval(load,60000);
 </script>
 </body>

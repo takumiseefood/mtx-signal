@@ -33,5 +33,6 @@ while [ $SECONDS -lt $END ]; do
   fi
   publish_live
   if trading_hours; then step=300; else step=1800; fi
-  now=$(date +%s); sleep $(( step - now % step + 20 ))
+  now=$(date +%s); wait=$(( step - now % step + 20 ))
+  if trading_hours; then python watch.py "$wait" || sleep "$wait"; else sleep "$wait"; fi   # 盤中每 10 秒盯價
 done
