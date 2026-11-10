@@ -248,26 +248,51 @@ def main():
     last = B[-1]; i = len(B) - 1
     ma20, ma120 = ind["ma20"][i], ind["ma120"][i]
 
-    # 1) 收盤後：下一個交易時段要做什麼
+    dist = ATR_MULT * st["atr"]                       # 停損距離（點）
+    ref_px = lb["c"] if (lb and lb.get("label") == "夜盤進行中") else last["close"]
+    TP_NOTE = ("✅ 停利：本策略不設固定停利，改用「移動停損」鎖住獲利——"
+               "價格往有利方向走，停損價就跟著{dir}；每天日盤收盤後會推播新的停損價，請照著改單。")
+
+    # 1) 收盤後：下一個交易時段要做什麼（進場 / 反手）
     if st["want"] != st["pos"]:
         act = st["want"]; cur = st["pos"]
+        side_txt = "做多" if act > 0 else "做空"
         if cur == 0:
-            title = f"📢 小台 {'做多' if act > 0 else '做空'}進場訊號"
-            how = f"下一個交易時段開盤（夜盤 15:00）{'買進' if act > 0 else '賣出'}"
+            title = f"📢 小台 {side_txt}進場訊號"
+            how = f"▶ 動作：下一個交易時段開盤（夜盤 15:00）{'買進' if act > 0 else '賣出'} 1 口"
         else:
-            title = f"🔄 小台 反手{'做多' if act > 0 else '做空'}"
-            how = f"下一個交易時段開盤平掉{SIDE[cur]}單，改{'做多' if act > 0 else '做空'}"
-        approx_stop = last["close"] - act * ATR_MULT * st["atr"]
-        msg = (f"{last['date']} 收盤 {last['close']:.0f}\n20MA {ma20:.0f} {'>' if ma20 > ma120 else '<'} 120MA {ma120:.0f}\n"
-               f"{how}\n停損 ≈ 進場價 {'−' if act > 0 else '+'} {ATR_MULT * st['atr']:.0f} 點（約 {approx_stop:.0f}）")
+            title = f"🔄 小台 反手{side_txt}"
+            how = f"▶ 動作：下一個交易時段開盤（夜盤 15:00）平掉{SIDE[cur]}單，並{'買進' if act > 0 else '賣出'} 1 口"
+        approx_stop = ref_px - act * dist
+        msg = (f"{last['date']} 收盤 {last['close']:.0f}｜20MA {ma20:.0f} {'>' if ma20 > ma120 else '<'} 120MA {ma120:.0f}\n"
+               f"{how}\n"
+               f"⛔ 停損：成交後立即掛停損單＝成交價 {'−' if act > 0 else '+'} {dist:.0f} 點"
+               f"（以目前 {ref_px:.0f} 估算約 {approx_stop:.0f}）\n"
+               + TP_NOTE.format(dir="上移" if act > 0 else "下移"))
         notify(f"act-{last['date']}-{act}", title, msg, state, 5, ["chart_with_upwards_trend" if act > 0 else "chart_with_downwards_trend"])
 
-    # 2) 盤中：即時價格觸及移動停損
+    # 2) 收盤後：持倉中 → 推播今天要改到的移動停損價
+    elif st["pos"] and st["stop"] and last["date"] == t.strftime("%Y-%m-%d") and hm >= 1345:
+        prev = replay(B[:-1], indicators(B[:-1]))
+        old = prev["stop"] if prev["pos"] == st["pos"] else None
+        if old is None or abs(st["stop"] - old) >= 20:
+            pnl = st["pos"] * (last["close"] - st["entry"])
+            better = old is not None and (st["stop"] - old) * st["pos"] > 0
+            notify(f"trail-{last['date']}-{int(st['stop'])}",
+                   f"🔧 小台 {SIDE[st['pos']]}單 調整停損 → {st['stop']:.0f}",
+                   f"{last['date']} 收盤 {last['close']:.0f}｜進場 {st['entry']:.0f}｜浮動 {pnl:+.0f} 點\n"
+                   f"⛔ 請把停損單改到 {st['stop']:.0f}" + (f"（原 {old:.0f}，{'已往有利方向移動，鎖住更多獲利' if better else 'ATR 變大，停損距離放寬'}）" if old else "") + "\n"
+                   f"距今日收盤 {abs(last['close'] - st['stop']):.0f} 點；均線方向不變就續抱，觸及停損才出場",
+                   state, 3, ["wrench"])
+
+    # 3) 盤中：即時價格觸及移動停損
     if lb and st["pos"] and st["stop"]:
         hit = (st["pos"] > 0 and lb["l"] <= st["stop"]) or (st["pos"] < 0 and lb["h"] >= st["stop"])
         if hit:
+            again = st["want"] == st["pos"]
             notify(f"stop-{last['date']}-{st['pos']}-{int(st['stop'])}", f"⛔ 小台 {SIDE[st['pos']]}單觸及移動停損",
-                   f"停損價 {st['stop']:.0f}，目前 {lb['c']:.0f}（{lb['label']}）\n依規則出場；若均線方向不變，下一個交易時段開盤再進場",
+                   f"停損價 {st['stop']:.0f}，目前 {lb['c']:.0f}（{lb['label']}）\n▶ 動作：若停損單未成交，請手動平倉\n"
+                   + ("均線方向不變：收盤後若仍符合，下一個交易時段開盤會再進場，屆時會再推播新的停損價" if again else "均線已轉向，收盤後會推播反向進場訊號"),
                    state, 5, ["no_entry"])
 
     json.dump(state, open(STATE_PATH, "w", encoding="utf-8"), ensure_ascii=False)
