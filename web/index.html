@@ -70,6 +70,8 @@
   <div class="card"><div class="k">60分 20MA ／ 120MA</div><div class="v" id="s60ma">—</div><div class="sub" id="s60maSub"></div></div>
 </div>
 <div class="pane"><div class="t"><span>60分K</span><span style="color:var(--ma20)">20MA</span><span style="color:var(--ma120)">120MA</span></div><div id="s60chart" style="height:300px"></div></div>
+<div class="pane"><div class="t"><span>60分 MACD(12,26,9)</span><span>DIF <b id="s60dif"></b></span><span>DEA <b id="s60dea"></b></span><span>柱 <b id="s60h"></b></span></div><div id="s60macd" style="height:130px"></div></div>
+<div class="pane"><div class="t"><span>60分 KD(9,3,3)</span><span style="color:#e6e8ee">K <b id="s60k"></b></span><span style="color:var(--ma20)">D <b id="s60d"></b></span></div><div id="s60kd" style="height:130px"></div></div>
 <div class="card"><div class="k" style="margin-bottom:4px">60分模擬 最近交易（1 口點數；停損＝虧損離場，出場＝停利離場）</div>
 <table><thead><tr><th>進場</th><th>出場</th><th>方向</th><th>進→出</th><th>原因</th><th>點數</th></tr></thead><tbody id="s60tr"></tbody></table></div>
 <div class="err" id="err"></div>
@@ -158,6 +160,17 @@ const c60=LightweightCharts.createChart(document.getElementById('s60chart'),{...
 const s60C=c60.addCandlestickSeries({upColor:UP,downColor:DOWN,borderUpColor:UP,borderDownColor:DOWN,wickUpColor:UP,wickDownColor:DOWN});
 const s60a=c60.addLineSeries({color:'#f5a524',lineWidth:2,priceLineVisible:false,lastValueVisible:false});
 const s60b=c60.addLineSeries({color:'#4e8cff',lineWidth:2,priceLineVisible:false,lastValueVisible:false});
+const mk60=(id,h)=>LightweightCharts.createChart(document.getElementById(id),{...base,height:h,width:document.getElementById(id).clientWidth,timeScale:{...base.timeScale,timeVisible:true,secondsVisible:false}});
+const c60m=mk60('s60macd',130),c60k=mk60('s60kd',130);
+const s60H=c60m.addHistogramSeries({priceLineVisible:false,lastValueVisible:false});
+const s60Dif=c60m.addLineSeries({color:'#e6e8ee',lineWidth:1,priceLineVisible:false,lastValueVisible:false});
+const s60Dea=c60m.addLineSeries({color:'#f5a524',lineWidth:1,priceLineVisible:false,lastValueVisible:false});
+const s60K=c60k.addLineSeries({color:'#e6e8ee',lineWidth:1.5,priceLineVisible:false,lastValueVisible:false});
+const s60D=c60k.addLineSeries({color:'#f5a524',lineWidth:1.5,priceLineVisible:false,lastValueVisible:false});
+[80,50,20].forEach(v=>s60K.createPriceLine({price:v,color:'#3a4252',lineWidth:1,lineStyle:2,axisLabelVisible:false}));
+const ch60=[c60,c60m,c60k];let sync60=false;
+ch60.forEach(c=>c.timeScale().subscribeVisibleLogicalRangeChange(r=>{if(sync60||!r)return;sync60=true;ch60.forEach(o=>o!==c&&o.timeScale().setVisibleLogicalRange(r));sync60=false}));
+window.addEventListener('resize',()=>{c60m.applyOptions({width:document.getElementById('s60macd').clientWidth});c60k.applyOptions({width:document.getElementById('s60kd').clientWidth})});
 let s60line=null;window.addEventListener('resize',()=>c60.applyOptions({width:document.getElementById('s60chart').clientWidth}));
 const ts=t=>Date.parse(t.replace(' ','T')+':00Z')/1000;   // 以台北時間直接當刻度
 function drawSim60(x){if(!x||!x.bars){document.getElementById('s60upd').textContent='60分資料準備中…';return}
@@ -168,6 +181,12 @@ function drawSim60(x){if(!x||!x.bars){document.getElementById('s60upd').textCont
   s60C.setMarkers(x.markers.map(m=>m.kind==='entry'?{time:ts(m.t),position:m.side>0?'belowBar':'aboveBar',color:m.side>0?UP:DOWN,shape:m.side>0?'arrowUp':'arrowDown',text:m.side>0?'多':'空'}
     :m.kind==='stop'?{time:ts(m.t),position:m.side>0?'belowBar':'aboveBar',color:'#9aa3b5',shape:'square',text:'停損'}:{time:ts(m.t),position:m.side>0?'aboveBar':'belowBar',color:'#f5a524',shape:'circle',text:'出場'}));
   const win=st.stop&&st.pos*(st.stop-st.entry)>0;if(s60line){s60C.removePriceLine(s60line);s60line=null}
+  const XB=x.bars.filter(b=>b.dif!=null);
+  s60H.setData(XB.map(b=>({time:ts(b.t),value:b.hist,color:b.hist>=0?'rgba(242,54,69,.75)':'rgba(8,153,129,.75)'})));
+  s60Dif.setData(XB.map(b=>({time:ts(b.t),value:b.dif})));s60Dea.setData(XB.map(b=>({time:ts(b.t),value:b.dea})));
+  s60K.setData(XB.map(b=>({time:ts(b.t),value:b.K})));s60D.setData(XB.map(b=>({time:ts(b.t),value:b.D})));
+  const lb=XB[XB.length-1];if(lb){document.getElementById('s60dif').textContent=f1(lb.dif);document.getElementById('s60dea').textContent=f1(lb.dea);
+    document.getElementById('s60h').textContent=f1(lb.hist);document.getElementById('s60k').textContent=f1(lb.K);document.getElementById('s60d').textContent=f1(lb.D)}
   G.s60=st;G.s60cs=cs;
   if(st.stop)s60line=s60C.createPriceLine({price:st.stop,color:win?'#f5a524':'#9aa3b5',lineWidth:1,lineStyle:2,title:win?'停利出場':'停損'});
   if(!window._f60){c60.timeScale().setVisibleLogicalRange({from:cs.length-80,to:cs.length+2});window._f60=1}

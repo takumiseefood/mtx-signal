@@ -161,6 +161,11 @@ def replay(B):
     tr = [B[0]["h"] - B[0]["l"]] + [max(B[i]["h"] - B[i]["l"], abs(B[i]["h"] - C[i - 1]), abs(B[i]["l"] - C[i - 1])) for i in range(1, len(B))]
     atr = ema(tr, 1 / ATR_N)
     dif = [x - y for x, y in zip(ema(C, 2 / 13), ema(C, 2 / 27))]; dea = ema(dif, 0.2)
+    K, D = [], []; kk = dd = 50.0                      # KD(9,3,3)
+    for i, b in enumerate(B):
+        w = B[max(0, i - 8):i + 1]; hh = max(x["h"] for x in w); ll = min(x["l"] for x in w)
+        rsv = 50.0 if hh == ll else (b["c"] - ll) / (hh - ll) * 100
+        kk = kk * 2 / 3 + rsv / 3; dd = dd * 2 / 3 + kk / 3; K.append(kk); D.append(dd)
     pos = 0; e = ext = 0.0; want = 0; trades = []; ev = []; ent = None
     start = next((i for i in range(len(B)) if s[i] is not None), len(B))
     for i in range(start, len(B)):
@@ -181,7 +186,7 @@ def replay(B):
     L = len(B) - 1
     return dict(pos=pos, entry=e if pos else None, entry_t=ent if pos else None,
                 stop=(ext - pos * MULT * atr[L]) if pos else None, want=want, atr=atr[L],
-                ma20=a, ma120=s, hist=[x - y for x, y in zip(dif, dea)], trades=trades, events=ev)
+                ma20=a, ma120=s, dif=dif, dea=dea, hist=[x - y for x, y in zip(dif, dea)], K=K, D=D, trades=trades, events=ev)
 
 
 def notify(key, title, msg, state, prio=3, tags=None):
@@ -239,7 +244,8 @@ def main():
     page["sim60"] = dict(
         updated=t.strftime("%Y-%m-%d %H:%M"), log=log, sim_start=SIM_START,
         bars=[dict(t=closed[i]["t"], o=closed[i]["o"], h=closed[i]["h"], l=closed[i]["l"], c=closed[i]["c"],
-                   ma20=r1(st["ma20"][i]), ma120=r1(st["ma120"][i])) for i in range(s0, len(closed))],
+                   ma20=r1(st["ma20"][i]), ma120=r1(st["ma120"][i]), dif=r1(st["dif"][i]), dea=r1(st["dea"][i]),
+                   hist=r1(st["hist"][i]), K=r1(st["K"][i]), D=r1(st["D"][i])) for i in range(s0, len(closed))],
         forming=forming, markers=[dict(t=x, kind=k, side=sd) for x, k, sd in st["events"] if x >= closed[s0]["t"]],
         status=dict(pos=st["pos"], side=SIDE[st["pos"]], entry=st["entry"], entry_t=st["entry_t"], stop=r1(st["stop"]),
                     want=st["want"], next=SIDE[st["want"]], atr=r1(st["atr"]), last_t=last["t"], last_c=last["c"],
