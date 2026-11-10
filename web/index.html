@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>小台訊號</title>
+<meta name="theme-color" content="#0f1115">
+<style>
+  :root{--bg:#0f1115;--card:#171a21;--line:#262b36;--text:#e6e8ee;--sub:#8b93a7;--up:#f23645;--down:#089981;--ma20:#f5a524;--ma120:#4e8cff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif;padding:12px 12px 40px;max-width:900px;margin-inline:auto}
+  header{display:flex;justify-content:space-between;align-items:flex-end;gap:8px;margin:4px 0 10px}
+  h1{font-size:17px;margin:0;font-weight:600}
+  .sub{color:var(--sub);font-size:12px}
+  .px{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .chg{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+  .up{color:var(--up)} .down{color:var(--down)}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .card .k{color:var(--sub);font-size:12px}
+  .card .v{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+  .next{grid-column:1/-1;border-color:#3a4252}
+  .next.go-long{border-color:var(--up);background:rgba(242,54,69,.08)}
+  .next.go-short{border-color:var(--down);background:rgba(8,153,129,.08)}
+  .pane{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden}
+  .pane .t{display:flex;gap:12px;flex-wrap:wrap;padding:8px 12px 0;font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+  .pane .t b{font-weight:600}
+  #main{height:330px} #macd,#kd{height:140px}
+  table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;font-variant-numeric:tabular-nums}
+  th,td{padding:6px 4px;border-bottom:1px solid var(--line);text-align:right} th{color:var(--sub);font-weight:500} td:first-child,th:first-child{text-align:left}
+  .rules{color:var(--sub);font-size:12px;margin-top:14px}
+  .err{color:#f5a524;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>小台指期近月　日K</h1>
+    <div class="sub" id="upd">載入中…</div>
+  </div>
+  <div style="text-align:right">
+    <div class="px" id="px">—</div>
+    <div class="chg" id="chg"></div>
+  </div>
+</header>
+
+<div class="grid">
+  <div class="card next" id="nextCard"><div class="k">下一步</div><div class="v" id="next">—</div><div class="sub" id="nextSub"></div></div>
+  <div class="card"><div class="k">目前部位</div><div class="v" id="pos">—</div><div class="sub" id="posSub"></div></div>
+  <div class="card"><div class="k">移動停損價</div><div class="v" id="stop">—</div><div class="sub" id="stopSub"></div></div>
+  <div class="card"><div class="k">20MA ／ 120MA</div><div class="v" id="ma">—</div><div class="sub" id="maSub"></div></div>
+  <div class="card"><div class="k">ATR(14)</div><div class="v" id="atr">—</div><div class="sub">2倍ATR＝停損距離</div></div>
+</div>
+
+<div class="pane"><div class="t"><span>K線</span><span style="color:var(--ma20)">20MA <b id="l20"></b></span><span style="color:var(--ma120)">120MA <b id="l120"></b></span></div><div id="main"></div></div>
+<div class="pane"><div class="t"><span>MACD(12,26,9)</span><span>DIF <b id="ldif"></b></span><span>DEA <b id="ldea"></b></span><span>柱 <b id="lh"></b></span></div><div id="macd"></div></div>
+<div class="pane"><div class="t"><span>KD(9,3,3)</span><span style="color:#e6e8ee">K <b id="lk"></b></span><span style="color:var(--ma20)">D <b id="ld"></b></span></div><div id="kd"></div></div>
+
+<div class="card" style="margin-top:10px">
+  <div class="k" style="margin-bottom:4px">最近交易（策略重播，1 口點數）</div>
+  <table><thead><tr><th>進場</th><th>出場</th><th>方向</th><th>進→出</th><th>原因</th><th>點數</th></tr></thead><tbody id="tr"></tbody></table>
+</div>
+<div class="err" id="err"></div>
+<p class="rules">策略：日K收盤 20MA&gt;120MA 做多、&lt; 做空，下一個交易時段（夜盤15:00）開盤執行；進場後以最有利價格 ∓ 2×ATR(14) 移動停損，停損後若均線方向不變，下一個交易時段再進場。資料來源：臺灣期貨交易所（日K含夜盤），每 10 分鐘更新。僅供參考，非投資建議。</p>
+
+<script src="lwc.js"></script>
+<script>
+const UP='#f23645',DOWN='#089981';
+const base={layout:{background:{color:'#171a21'},textColor:'#8b93a7',fontSize:11},grid:{vertLines:{color:'#20242d'},horzLines:{color:'#20242d'}},
+  rightPriceScale:{borderColor:'#262b36'},timeScale:{borderColor:'#262b36',rightOffset:3},crosshair:{mode:0},handleScroll:true,handleScale:true};
+const mk=(id)=>LightweightCharts.createChart(document.getElementById(id),{...base,height:document.getElementById(id).clientHeight,width:document.getElementById(id).clientWidth});
+const cMain=mk('main'),cMacd=mk('macd'),cKd=mk('kd');
+const sC=cMain.addCandlestickSeries({upColor:UP,downColor:DOWN,borderUpColor:UP,borderDownColor:DOWN,wickUpColor:UP,wickDownColor:DOWN});
+const s20=cMain.addLineSeries({color:'#f5a524',lineWidth:2,priceLineVisible:false,lastValueVisible:false});
+const s120=cMain.addLineSeries({color:'#4e8cff',lineWidth:2,priceLineVisible:false,lastValueVisible:false});
+const sH=cMacd.addHistogramSeries({priceLineVisible:false,lastValueVisible:false});
+const sDif=cMacd.addLineSeries({color:'#e6e8ee',lineWidth:1,priceLineVisible:false,lastValueVisible:false});
+const sDea=cMacd.addLineSeries({color:'#f5a524',lineWidth:1,priceLineVisible:false,lastValueVisible:false});
+const sK=cKd.addLineSeries({color:'#e6e8ee',lineWidth:1.5,priceLineVisible:false,lastValueVisible:false});
+const sD=cKd.addLineSeries({color:'#f5a524',lineWidth:1.5,priceLineVisible:false,lastValueVisible:false});
+[80,50,20].forEach(v=>sK.createPriceLine({price:v,color:'#3a4252',lineWidth:1,lineStyle:2,axisLabelVisible:false}));
+let stopLine=null;
+// 同步三張圖的時間軸
+const charts=[cMain,cMacd,cKd];let syncing=false;
+charts.forEach(c=>c.timeScale().subscribeVisibleLogicalRangeChange(r=>{if(syncing||!r)return;syncing=true;charts.forEach(o=>o!==c&&o.timeScale().setVisibleLogicalRange(r));syncing=false}));
+window.addEventListener('resize',()=>charts.forEach((c,i)=>{const el=['main','macd','kd'][i];c.applyOptions({width:document.getElementById(el).clientWidth})}));
+
+const f0=v=>v==null?'—':Math.round(v).toLocaleString('en-US');
+const f1=v=>v==null?'—':(+v).toFixed(1);
+function nextTradingDay(d){const x=new Date(d+'T00:00:00+08:00');do{x.setDate(x.getDate()+1)}while(x.getDay()===0||x.getDay()===6);return x.toISOString().slice(0,10)}
+
+async function load(){
+  try{
+    const j=await (await fetch('data.json?t='+Date.now(),{cache:'no-store'})).json();
+    const B=j.bars, st=j.status, lv=j.live;
+    const candles=B.map(b=>({time:b.d,open:b.o,high:b.h,low:b.l,close:b.c}));
+    let liveDate=null;
+    if(lv){liveDate=nextTradingDay(B[B.length-1].d);const tw=new Date(Date.now()+8*3600e3).toISOString().slice(0,10);if(tw>B[B.length-1].d&&new Date(tw+'T00:00:00Z').getUTCDay()%6!==0&&lv.label.startsWith('日盤'))liveDate=tw;
+      candles.push({time:liveDate,open:lv.o,high:lv.h,low:lv.l,close:lv.c});}
+    sC.setData(candles);
+    s20.setData(B.filter(b=>b.ma20!=null).map(b=>({time:b.d,value:b.ma20})));
+    s120.setData(B.filter(b=>b.ma120!=null).map(b=>({time:b.d,value:b.ma120})));
+    sH.setData(B.map(b=>({time:b.d,value:b.hist,color:b.hist>=0?'rgba(242,54,69,.75)':'rgba(8,153,129,.75)'})));
+    sDif.setData(B.map(b=>({time:b.d,value:b.dif})));sDea.setData(B.map(b=>({time:b.d,value:b.dea})));
+    sK.setData(B.map(b=>({time:b.d,value:b.K})));sD.setData(B.map(b=>({time:b.d,value:b.D})));
+    const mks=j.markers.map(m=>m.kind==='entry'?{time:m.date,position:m.side>0?'belowBar':'aboveBar',color:m.side>0?UP:DOWN,shape:m.side>0?'arrowUp':'arrowDown',text:m.side>0?'多':'空'}
+      :{time:m.date,position:'aboveBar',color:'#f5a524',shape:'circle',text:m.kind==='stop'?'停損':'出'});
+    sC.setMarkers(mks.sort((a,b)=>a.time<b.time?-1:1));
+    if(stopLine){sC.removePriceLine(stopLine);stopLine=null}
+    if(st.stop)stopLine=sC.createPriceLine({price:st.stop,color:'#f5a524',lineWidth:1,lineStyle:2,title:'停損'});
+    if(!window._fitted){cMain.timeScale().setVisibleLogicalRange({from:candles.length-90,to:candles.length+2});window._fitted=1}
+    // 數字
+    const last=B[B.length-1],prev=B[B.length-2];
+    const price=lv?lv.c:last.c, ref=lv?last.c:prev.c, d=price-ref;
+    document.getElementById('px').textContent=f0(price);document.getElementById('px').className='px '+(d>=0?'up':'down');
+    document.getElementById('chg').textContent=(d>=0?'▲ ':'▼ ')+f0(Math.abs(d))+'　'+(d/ref*100).toFixed(2)+'%';document.getElementById('chg').className='chg '+(d>=0?'up':'down');
+    document.getElementById('upd').textContent=(lv?`${lv.label}・${lv.time.slice(0,2)}:${lv.time.slice(2,4)}`:`${last.d} 收盤`)+'　更新 '+j.updated;
+    const side={1:'做多',[-1]:'做空',0:'空手'};
+    document.getElementById('pos').innerHTML=`<span class="${st.pos>0?'up':st.pos<0?'down':''}">${side[st.pos]}</span>`;
+    document.getElementById('posSub').textContent=st.pos?`${st.entry_date} 進場 ${f0(st.entry)}｜浮動 ${f0((price-st.entry)*st.pos)} 點`:'';
+    document.getElementById('stop').textContent=st.stop?f0(st.stop):'—';
+    document.getElementById('stopSub').textContent=st.stop?`距目前 ${f0(Math.abs(price-st.stop))} 點`:'目前無部位';
+    document.getElementById('ma').textContent=f0(st.ma20)+' ／ '+f0(st.ma120);
+    document.getElementById('maSub').textContent=st.ma20>st.ma120?'20MA 在上 → 多方':'20MA 在下 → 空方';
+    document.getElementById('atr').textContent=f0(st.atr);
+    const nc=document.getElementById('nextCard');nc.className='card next';
+    if(st.want!==st.pos){nc.classList.add(st.want>0?'go-long':'go-short');
+      document.getElementById('next').innerHTML=`<span class="${st.want>0?'up':'down'}">${st.pos===0?'進場':'反手'}${side[st.want]}</span>`;
+      document.getElementById('nextSub').textContent=`下一個交易時段開盤執行，停損約 進場價 ${st.want>0?'−':'+'} ${f0(2*st.atr)} 點`;}
+    else{document.getElementById('next').textContent=st.pos?`續抱${side[st.pos]}`:'觀望';document.getElementById('nextSub').textContent=st.pos?'跌破（漲破）停損價才出場':'等均線訊號';}
+    document.getElementById('l20').textContent=f0(last.ma20);document.getElementById('l120').textContent=f0(last.ma120);
+    document.getElementById('ldif').textContent=f1(last.dif);document.getElementById('ldea').textContent=f1(last.dea);document.getElementById('lh').textContent=f1(last.hist);
+    document.getElementById('lk').textContent=f1(last.K);document.getElementById('ld').textContent=f1(last.D);
+    document.getElementById('tr').innerHTML=j.trades.map(t=>`<tr><td>${t.entry_date.slice(5).replace('-','/')}</td><td>${t.exit_date.slice(5).replace('-','/')}</td><td class="${t.side>0?'up':'down'}">${t.side>0?'多':'空'}</td><td>${f0(t.entry)}→${f0(t.exit)}</td><td>${t.why}</td><td class="${t.pts>=0?'up':'down'}">${t.pts>=0?'+':''}${f0(t.pts)}</td></tr>`).join('');
+    const bad=(j.log||[]).filter(x=>x.includes('失敗'));document.getElementById('err').textContent=bad.join('；');
+  }catch(e){document.getElementById('err').textContent='資料載入失敗：'+e.message}
+}
+load();setInterval(load,60000);
+</script>
+</body>
+</html>

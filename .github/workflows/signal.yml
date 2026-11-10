@@ -1,0 +1,47 @@
+name: 小台訊號
+
+on:
+  schedule:
+    # 台北時間 = UTC+8。GitHub 排程可能延遲幾分鐘。
+    - cron: "*/10 0-6 * * 1-5"    # 台北 08:00-14:59 日盤（含收盤後產生訊號）
+    - cron: "*/10 7-21 * * 1-5"   # 台北 15:00-隔日05:59 夜盤
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: signal
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 計算訊號並推播
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          PAGE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: python signal.py
+      - name: 儲存新的日K與通知紀錄
+        run: |
+          git config user.name "mtx-signal-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || (git commit -m "update data $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')" && git push)
+      - name: 準備網頁
+        run: cp web/* site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
