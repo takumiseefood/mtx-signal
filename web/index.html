@@ -47,9 +47,9 @@
 <div class="grid">
   <div class="card next" id="nextCard"><div class="k">下一步</div><div class="v" id="next">—</div><div class="sub" id="nextSub"></div></div>
   <div class="card"><div class="k">目前部位</div><div class="v" id="pos">—</div><div class="sub" id="posSub"></div></div>
-  <div class="card"><div class="k">移動停損價</div><div class="v" id="stop">—</div><div class="sub" id="stopSub"></div></div>
+  <div class="card"><div class="k" id="stopK">防守價</div><div class="v" id="stop">—</div><div class="sub" id="stopSub"></div></div>
   <div class="card"><div class="k">20MA ／ 120MA</div><div class="v" id="ma">—</div><div class="sub" id="maSub"></div></div>
-  <div class="card"><div class="k">ATR(14)</div><div class="v" id="atr">—</div><div class="sub">2倍ATR＝停損距離</div></div>
+  <div class="card"><div class="k">ATR(14)</div><div class="v" id="atr">—</div><div class="sub">2倍ATR＝防守距離</div></div>
 </div>
 
 <div class="pane"><div class="t"><span>K線</span><span style="color:var(--ma20)">20MA <b id="l20"></b></span><span style="color:var(--ma120)">120MA <b id="l120"></b></span></div><div id="main"></div></div>
@@ -57,11 +57,11 @@
 <div class="pane"><div class="t"><span>KD(9,3,3)</span><span style="color:#e6e8ee">K <b id="lk"></b></span><span style="color:var(--ma20)">D <b id="ld"></b></span></div><div id="kd"></div></div>
 
 <div class="card" style="margin-top:10px">
-  <div class="k" style="margin-bottom:4px">最近交易（策略重播，1 口點數）</div>
+  <div class="k" style="margin-bottom:4px">最近交易（策略重播，1 口點數；停損＝虧損離場，出場＝停利離場，*＝因均線反轉）</div>
   <table><thead><tr><th>進場</th><th>出場</th><th>方向</th><th>進→出</th><th>原因</th><th>點數</th></tr></thead><tbody id="tr"></tbody></table>
 </div>
 <div class="err" id="err"></div>
-<p class="rules">策略：日K收盤 20MA&gt;120MA 做多、&lt; 做空，下一個交易時段（夜盤15:00）開盤執行；進場後以最有利價格 ∓ 2×ATR(14) 移動停損，停損後若均線方向不變，下一個交易時段再進場。資料來源：臺灣期貨交易所（日K含夜盤），每 10 分鐘更新。僅供參考，非投資建議。</p>
+<p class="rules">策略：日K收盤 20MA&gt;120MA 做多、&lt; 做空，下一個交易時段（夜盤15:00）開盤執行；進場後以最有利價格 ∓ 2×ATR(14) 設防守價：防守價仍在虧損區稱「停損價」，越過進場價後稱「停利出場價」。離場後若均線方向不變，下一個交易時段再進場。資料來源：臺灣期貨交易所（日K含夜盤），每 10 分鐘更新。僅供參考，非投資建議。</p>
 
 <script src="lwc.js"></script>
 <script>
@@ -105,10 +105,12 @@ async function load(){
     sDif.setData(B.map(b=>({time:b.d,value:b.dif})));sDea.setData(B.map(b=>({time:b.d,value:b.dea})));
     sK.setData(B.map(b=>({time:b.d,value:b.K})));sD.setData(B.map(b=>({time:b.d,value:b.D})));
     const mks=j.markers.map(m=>m.kind==='entry'?{time:m.date,position:m.side>0?'belowBar':'aboveBar',color:m.side>0?UP:DOWN,shape:m.side>0?'arrowUp':'arrowDown',text:m.side>0?'多':'空'}
-      :{time:m.date,position:'aboveBar',color:'#f5a524',shape:'circle',text:m.kind==='stop'?'停損':'出'});
+      :m.kind==='stop'?{time:m.date,position:m.side>0?'belowBar':'aboveBar',color:'#9aa3b5',shape:'square',text:'停損'}
+      :{time:m.date,position:m.side>0?'aboveBar':'belowBar',color:'#f5a524',shape:'circle',text:'出場'});
     sC.setMarkers(mks.sort((a,b)=>a.time<b.time?-1:1));
     if(stopLine){sC.removePriceLine(stopLine);stopLine=null}
-    if(st.stop)stopLine=sC.createPriceLine({price:st.stop,color:'#f5a524',lineWidth:1,lineStyle:2,title:'停損'});
+    const gWin=st.stop&&st.pos*(st.stop-st.entry)>0;
+    if(st.stop)stopLine=sC.createPriceLine({price:st.stop,color:gWin?'#f5a524':'#9aa3b5',lineWidth:1,lineStyle:2,title:gWin?'停利出場':'停損'});
     if(!window._fitted){cMain.timeScale().setVisibleLogicalRange({from:candles.length-90,to:candles.length+2});window._fitted=1}
     // 數字
     const last=B[B.length-1],prev=B[B.length-2];
@@ -119,6 +121,7 @@ async function load(){
     const side={1:'做多',[-1]:'做空',0:'空手'};
     document.getElementById('pos').innerHTML=`<span class="${st.pos>0?'up':st.pos<0?'down':''}">${side[st.pos]}</span>`;
     document.getElementById('posSub').textContent=st.pos?`${st.entry_date} 進場 ${f0(st.entry)}｜浮動 ${f0((price-st.entry)*st.pos)} 點`:'';
+    document.getElementById('stopK').textContent=st.stop?(gWin?'停利出場價（已鎖住獲利）':'停損價（仍在虧損區）'):'停損／停利出場價';
     document.getElementById('stop').textContent=st.stop?f0(st.stop):'—';
     document.getElementById('stopSub').textContent=st.stop?`距目前 ${f0(Math.abs(price-st.stop))} 點`:'目前無部位';
     document.getElementById('ma').textContent=f0(st.ma20)+' ／ '+f0(st.ma120);
@@ -128,11 +131,11 @@ async function load(){
     if(st.want!==st.pos){nc.classList.add(st.want>0?'go-long':'go-short');
       document.getElementById('next').innerHTML=`<span class="${st.want>0?'up':'down'}">${st.pos===0?'進場':'反手'}${side[st.want]}</span>`;
       document.getElementById('nextSub').textContent=`下一個交易時段開盤執行，停損約 進場價 ${st.want>0?'−':'+'} ${f0(2*st.atr)} 點`;}
-    else{document.getElementById('next').textContent=st.pos?`續抱${side[st.pos]}`:'觀望';document.getElementById('nextSub').textContent=st.pos?'跌破（漲破）停損價才出場':'等均線訊號';}
+    else{document.getElementById('next').textContent=st.pos?`續抱${side[st.pos]}`:'觀望';document.getElementById('nextSub').textContent=st.pos?(gWin?`觸及停利出場價 ${f0(st.stop)} 就獲利出場`:`觸及停損價 ${f0(st.stop)} 就停損`):'等均線訊號';}
     document.getElementById('l20').textContent=f0(last.ma20);document.getElementById('l120').textContent=f0(last.ma120);
     document.getElementById('ldif').textContent=f1(last.dif);document.getElementById('ldea').textContent=f1(last.dea);document.getElementById('lh').textContent=f1(last.hist);
     document.getElementById('lk').textContent=f1(last.K);document.getElementById('ld').textContent=f1(last.D);
-    document.getElementById('tr').innerHTML=j.trades.map(t=>`<tr><td>${t.entry_date.slice(5).replace('-','/')}</td><td>${t.exit_date.slice(5).replace('-','/')}</td><td class="${t.side>0?'up':'down'}">${t.side>0?'多':'空'}</td><td>${f0(t.entry)}→${f0(t.exit)}</td><td>${t.why}</td><td class="${t.pts>=0?'up':'down'}">${t.pts>=0?'+':''}${f0(t.pts)}</td></tr>`).join('');
+    document.getElementById('tr').innerHTML=j.trades.map(t=>`<tr><td>${t.entry_date.slice(5).replace('-','/')}</td><td>${t.exit_date.slice(5).replace('-','/')}</td><td class="${t.side>0?'up':'down'}">${t.side>0?'多':'空'}</td><td>${f0(t.entry)}→${f0(t.exit)}</td><td class="${t.why.startsWith('出場')?'up':''}">${t.why.replace('（均線反轉）','*')}</td><td class="${t.pts>=0?'up':'down'}">${t.pts>=0?'+':''}${f0(t.pts)}</td></tr>`).join('');
     const bad=(j.log||[]).filter(x=>x.includes('失敗'));document.getElementById('err').textContent=bad.join('；');
   }catch(e){document.getElementById('err').textContent='資料載入失敗：'+e.message}
 }
