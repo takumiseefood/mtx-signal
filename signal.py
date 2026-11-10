@@ -232,6 +232,16 @@ def main():
         live = fetch_live(); log.append("即時行情 OK")
     except Exception as ex:
         log.append(f"即時行情失敗：{ex}")
+    # 日盤收盤後（13:45~15:00）期交所日資料可能還沒公布 → 先用即時行情組出今日K棒，確保 15:00 前發出訊號
+    today = t.strftime("%Y-%m-%d"); hm = t.hour * 100 + t.minute
+    d_q, n_q = live.get("day"), live.get("night")
+    if 1345 <= hm < 1500 and B[-1]["date"] < today and d_q and d_q["date"] == t.strftime("%Y%m%d") and d_q["time"] >= "134400":
+        night_ok = n_q and n_q["date"] == d_q["date"] and n_q["time"] < "060000"
+        B.append(dict(date=today, open=n_q["o"] if night_ok else d_q["o"],
+                      high=max(d_q["h"], n_q["h"]) if night_ok else d_q["h"],
+                      low=min(d_q["l"], n_q["l"]) if night_ok else d_q["l"],
+                      close=d_q["c"], source="live"))
+        save_csv(B); log.append("今日K棒暫以即時行情組成（期交所日資料公布後會自動更正）")
     lb = live_bar(live, B[-1]["date"])
 
     ind = indicators(B); st = replay(B, ind); state = load_state()
