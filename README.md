@@ -2,7 +2,8 @@
 
 - 策略：日K（含夜盤）收盤 20MA > 120MA 做多、< 做空；下一個交易時段（夜盤 15:00）開盤執行；進場後以最有利價格 ∓ 2×ATR(14) 移動停損，停損後若均線方向不變，下一個交易時段再進場。
 - 資料：臺灣期貨交易所「期貨每日交易行情」與「行情資訊網」。
-- 執行：GitHub Actions 每 10 分鐘（交易時段）執行 `signal.py`，有訊號時以 [ntfy](https://ntfy.sh) 推播，圖表頁發佈在 GitHub Pages。
+- 執行：GitHub Actions 每 5 分鐘（交易時段）執行 `signal.py`，有訊號時以 [ntfy](https://ntfy.sh) 推播，圖表頁發佈在 GitHub Pages。
+- 模擬：`sim60.py` 以期交所逐筆成交資料組 60 分K，跑同一套 20/120＋2倍ATR，推播標題加【60分模擬】，與日K實單訊號分開，僅供觀察。
 - 推播頻道名稱放在 repository secret `NTFY_TOPIC`。
 
 僅供個人參考，非投資建議。

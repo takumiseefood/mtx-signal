@@ -60,6 +60,18 @@
   <div class="k" style="margin-bottom:4px">最近交易（策略重播，1 口點數；停損＝虧損離場，出場＝停利離場，*＝因均線反轉）</div>
   <table><thead><tr><th>進場</th><th>出場</th><th>方向</th><th>進→出</th><th>原因</th><th>點數</th></tr></thead><tbody id="tr"></tbody></table>
 </div>
+<h2 style="font-size:15px;margin:22px 0 6px">🧪 60分K 模擬（20/120＋2倍ATR）<span class="sub">　僅供觀察，與上方日K實單訊號分開</span></h2>
+<div class="sub" id="s60upd" style="margin-bottom:6px">—</div>
+<div class="grid">
+  <div class="card next" id="s60nextCard"><div class="k">下一步（模擬）</div><div class="v" id="s60next">—</div><div class="sub" id="s60nextSub"></div></div>
+  <div class="card"><div class="k">模擬部位</div><div class="v" id="s60pos">—</div><div class="sub" id="s60posSub"></div></div>
+  <div class="card"><div class="k" id="s60stopK">防守價</div><div class="v" id="s60stop">—</div><div class="sub" id="s60stopSub"></div></div>
+  <div class="card"><div class="k">模擬累計（自 11/11 起）</div><div class="v" id="s60pts">—</div><div class="sub" id="s60ptsSub"></div></div>
+  <div class="card"><div class="k">60分 20MA ／ 120MA</div><div class="v" id="s60ma">—</div><div class="sub" id="s60maSub"></div></div>
+</div>
+<div class="pane"><div class="t"><span>60分K</span><span style="color:var(--ma20)">20MA</span><span style="color:var(--ma120)">120MA</span></div><div id="s60chart" style="height:300px"></div></div>
+<div class="card"><div class="k" style="margin-bottom:4px">60分模擬 最近交易（1 口點數；停損＝虧損離場，出場＝停利離場）</div>
+<table><thead><tr><th>進場</th><th>出場</th><th>方向</th><th>進→出</th><th>原因</th><th>點數</th></tr></thead><tbody id="s60tr"></tbody></table></div>
 <div class="err" id="err"></div>
 <p class="rules">策略：日K收盤 20MA&gt;120MA 做多、&lt; 做空，下一個交易時段（夜盤15:00）開盤執行；進場後以最有利價格 ∓ 2×ATR(14) 設防守價：防守價仍在虧損區稱「停損價」，越過進場價後稱「停利出場價」。離場後若均線方向不變，下一個交易時段再進場。資料來源：臺灣期貨交易所（日K含夜盤），每 5 分鐘更新。僅供參考，非投資建議。</p>
 
@@ -138,9 +150,39 @@ async function load(){
     document.getElementById('ldif').textContent=f1(last.dif);document.getElementById('ldea').textContent=f1(last.dea);document.getElementById('lh').textContent=f1(last.hist);
     document.getElementById('lk').textContent=f1(last.K);document.getElementById('ld').textContent=f1(last.D);
     document.getElementById('tr').innerHTML=j.trades.map(t=>`<tr><td>${t.entry_date.slice(5).replace('-','/')}</td><td>${t.exit_date.slice(5).replace('-','/')}</td><td class="${t.side>0?'up':'down'}">${t.side>0?'多':'空'}</td><td>${f0(t.entry)}→${f0(t.exit)}</td><td class="${t.why.startsWith('出場')?'up':''}">${t.why.replace('（均線反轉）','*')}</td><td class="${t.pts>=0?'up':'down'}">${t.pts>=0?'+':''}${f0(t.pts)}</td></tr>`).join('');
+    drawSim60(j.sim60);
     const bad=(j.log||[]).filter(x=>x.includes('失敗'));document.getElementById('err').textContent=bad.join('；');
   }catch(e){document.getElementById('err').textContent='資料載入失敗：'+e.message}
 }
+const c60=LightweightCharts.createChart(document.getElementById('s60chart'),{...base,height:300,width:document.getElementById('s60chart').clientWidth,timeScale:{...base.timeScale,timeVisible:true,secondsVisible:false}});
+const s60C=c60.addCandlestickSeries({upColor:UP,downColor:DOWN,borderUpColor:UP,borderDownColor:DOWN,wickUpColor:UP,wickDownColor:DOWN});
+const s60a=c60.addLineSeries({color:'#f5a524',lineWidth:2,priceLineVisible:false,lastValueVisible:false});
+const s60b=c60.addLineSeries({color:'#4e8cff',lineWidth:2,priceLineVisible:false,lastValueVisible:false});
+let s60line=null;window.addEventListener('resize',()=>c60.applyOptions({width:document.getElementById('s60chart').clientWidth}));
+const ts=t=>Date.parse(t.replace(' ','T')+':00Z')/1000;   // 以台北時間直接當刻度
+function drawSim60(x){if(!x||!x.bars){document.getElementById('s60upd').textContent='60分資料準備中…';return}
+  const st=x.status,side={1:'做多',[-1]:'做空',0:'空手'};
+  const cs=x.bars.map(b=>({time:ts(b.t),open:b.o,high:b.h,low:b.l,close:b.c}));
+  if(x.forming&&ts(x.forming.t)>cs[cs.length-1].time)cs.push({time:ts(x.forming.t),open:x.forming.o,high:x.forming.h,low:x.forming.l,close:x.forming.c});
+  s60C.setData(cs);s60a.setData(x.bars.filter(b=>b.ma20!=null).map(b=>({time:ts(b.t),value:b.ma20})));s60b.setData(x.bars.filter(b=>b.ma120!=null).map(b=>({time:ts(b.t),value:b.ma120})));
+  s60C.setMarkers(x.markers.map(m=>m.kind==='entry'?{time:ts(m.t),position:m.side>0?'belowBar':'aboveBar',color:m.side>0?UP:DOWN,shape:m.side>0?'arrowUp':'arrowDown',text:m.side>0?'多':'空'}
+    :m.kind==='stop'?{time:ts(m.t),position:m.side>0?'belowBar':'aboveBar',color:'#9aa3b5',shape:'square',text:'停損'}:{time:ts(m.t),position:m.side>0?'aboveBar':'belowBar',color:'#f5a524',shape:'circle',text:'出場'}));
+  const win=st.stop&&st.pos*(st.stop-st.entry)>0;if(s60line){s60C.removePriceLine(s60line);s60line=null}
+  if(st.stop)s60line=s60C.createPriceLine({price:st.stop,color:win?'#f5a524':'#9aa3b5',lineWidth:1,lineStyle:2,title:win?'停利出場':'停損'});
+  if(!window._f60){c60.timeScale().setVisibleLogicalRange({from:cs.length-80,to:cs.length+2});window._f60=1}
+  const price=x.forming?x.forming.c:st.last_c;
+  document.getElementById('s60upd').textContent=`最新收盤K棒 ${st.last_t}　更新 ${x.updated}`;
+  document.getElementById('s60pos').innerHTML=`<span class="${st.pos>0?'up':st.pos<0?'down':''}">${side[st.pos]}</span>`;
+  document.getElementById('s60posSub').textContent=st.pos?`${st.entry_t.slice(5)} 進場 ${f0(st.entry)}｜浮動 ${f0((price-st.entry)*st.pos)} 點`:'';
+  document.getElementById('s60stopK').textContent=st.stop?(win?'停利出場價':'停損價'):'停損／停利出場價';
+  document.getElementById('s60stop').textContent=st.stop?f0(st.stop):'—';document.getElementById('s60stopSub').textContent=st.stop?`距目前 ${f0(Math.abs(price-st.stop))} 點`:'目前無部位';
+  document.getElementById('s60pts').innerHTML=`<span class="${st.sim_pts>=0?'up':'down'}">${st.sim_pts>=0?'+':''}${f0(st.sim_pts)} 點</span>`;
+  document.getElementById('s60ptsSub').textContent=`${st.sim_trades} 筆｜歷史重播 ${st.hist_from.slice(5,10)} 起 ${st.hist_pts>=0?'+':''}${f0(st.hist_pts)} 點／${st.hist_trades} 筆`;
+  document.getElementById('s60ma').textContent=f0(st.ma20)+' ／ '+f0(st.ma120);document.getElementById('s60maSub').textContent=st.ma20>st.ma120?'20MA 在上 → 多方':'20MA 在下 → 空方';
+  const nc=document.getElementById('s60nextCard');nc.className='card next';
+  if(st.want!==st.pos){nc.classList.add(st.want>0?'go-long':'go-short');document.getElementById('s60next').innerHTML=`<span class="${st.want>0?'up':'down'}">${st.pos===0?'進場':'反手'}${side[st.want]}</span>`;document.getElementById('s60nextSub').textContent=`下一根60分K開盤，停損約 ${f0(2*st.atr)} 點`}
+  else{document.getElementById('s60next').textContent=st.pos?`續抱${side[st.pos]}`:'觀望';document.getElementById('s60nextSub').textContent=st.pos?(win?`觸及 ${f0(st.stop)} 停利出場`:`觸及 ${f0(st.stop)} 停損`):'等均線訊號'}
+  document.getElementById('s60tr').innerHTML=x.trades.map(t=>`<tr><td>${t.entry_t.slice(5).replace('-','/')}</td><td>${t.exit_t.slice(5).replace('-','/')}</td><td class="${t.side>0?'up':'down'}">${t.side>0?'多':'空'}</td><td>${f0(t.entry)}→${f0(t.exit)}</td><td class="${t.why.startsWith('出場')?'up':''}">${t.why}</td><td class="${t.pts>=0?'up':'down'}">${t.pts>=0?'+':''}${f0(t.pts)}</td></tr>`).join('');}
 load();setInterval(load,60000);
 </script>
 </body>
