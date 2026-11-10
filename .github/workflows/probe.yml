@@ -10,4 +10,13 @@ jobs:
           echo "== cnyes histories quote"; curl -s "https://ws.api.cnyes.com/ws/api/v1/charting/histories?resolution=60&symbol=TWF:MXF:FUTURES&quote=1" | head -c 600; echo
           SYM=$(curl -s -X POST https://mis.taifex.com.tw/futures/api/getQuoteList -H 'Content-Type: application/json' -d '{"MarketType":"1","SymbolType":"F","KindID":"1","CID":"MXF","ExpireMonth":"","RowSize":"全部","PageNo":"","SortColumn":"","AscDesc":"A"}' | python3 -c "import json,sys;L=json.load(sys.stdin)['RtData']['QuoteList'];L=[q for q in L if q['SymbolID'].startswith('MXF') and not q['SymbolID'].startswith('MXF-')];print(max(L,key=lambda q:float(q['CTotalVolume'] or 0))['SymbolID'])")
           echo "SYM=$SYM"
-          for ep in getChartData1M getChartData; do echo "== taifex $ep"; curl -s -X POST "https://mis.taifex.com.tw/futures/api/$ep" -H 'Content-Type: application/json' -d "{\"SymbolID\":\"$SYM\"}" | head -c 800; echo; done
+          curl -s -X POST "https://mis.taifex.com.tw/futures/api/getChartData1M" -H 'Content-Type: application/json' -d "{\"SymbolID\":\"$SYM\"}" | python3 -c "
+          import json,sys;d=json.load(sys.stdin)['RtData'];print(list(d.keys()))
+          for k,v in d.items():
+              if isinstance(v,list):print(k,len(v),v[:3],v[-2:])
+          "
+          SYM0=${SYM%-M}-F; echo "day $SYM0"; curl -s -X POST "https://mis.taifex.com.tw/futures/api/getChartData1M" -H 'Content-Type: application/json' -d "{\"SymbolID\":\"$SYM0\"}" | python3 -c "
+          import json,sys;d=json.load(sys.stdin)['RtData']
+          for k,v in d.items():
+              if isinstance(v,list):print(k,len(v),v[:2],v[-2:])
+          "
