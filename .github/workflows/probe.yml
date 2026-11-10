@@ -1,0 +1,13 @@
+name: probe
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          NOW=$(date +%s); FROM=$((NOW-8*3600))
+          echo "== cnyes histories"; curl -s "https://ws.api.cnyes.com/ws/api/v1/charting/histories?resolution=1&symbol=TWF:MXF:FUTURES&from=$NOW&to=$FROM" | head -c 600; echo
+          echo "== cnyes histories quote"; curl -s "https://ws.api.cnyes.com/ws/api/v1/charting/histories?resolution=60&symbol=TWF:MXF:FUTURES&quote=1" | head -c 600; echo
+          SYM=$(curl -s -X POST https://mis.taifex.com.tw/futures/api/getQuoteList -H 'Content-Type: application/json' -d '{"MarketType":"1","SymbolType":"F","KindID":"1","CID":"MXF","ExpireMonth":"","RowSize":"全部","PageNo":"","SortColumn":"","AscDesc":"A"}' | python3 -c "import json,sys;L=json.load(sys.stdin)['RtData']['QuoteList'];L=[q for q in L if q['SymbolID'].startswith('MXF') and not q['SymbolID'].startswith('MXF-')];print(max(L,key=lambda q:float(q['CTotalVolume'] or 0))['SymbolID'])")
+          echo "SYM=$SYM"
+          for ep in getChartData1M getChartData; do echo "== taifex $ep"; curl -s -X POST "https://mis.taifex.com.tw/futures/api/$ep" -H 'Content-Type: application/json' -d "{\"SymbolID\":\"$SYM\"}" | head -c 800; echo; done
