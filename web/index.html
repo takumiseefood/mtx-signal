@@ -26,8 +26,8 @@
   .pane .t{display:flex;gap:12px;flex-wrap:wrap;padding:8px 12px 0;font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
   .pane .t b{font-weight:600}
   #main{height:330px} #macd,#kd{height:140px}
-  table{width:100%;border-collapse:collapse;font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums}
-  th,td{padding:6px 2px;border-bottom:1px solid var(--line);text-align:right} th{color:var(--sub);font-weight:500} td:first-child,th:first-child{text-align:left}
+  table{width:100%;border-collapse:collapse;font-size:10.5px;white-space:nowrap;font-variant-numeric:tabular-nums}
+  th,td{padding:6px 1px;border-bottom:1px solid var(--line);text-align:right} th{color:var(--sub);font-weight:500} td:first-child,th:first-child{text-align:left}
   .rules{color:var(--sub);font-size:12px;margin-top:14px}
   .err{color:#f5a524;font-size:12px}
 </style>
@@ -62,7 +62,7 @@
 <div class="pane"><div class="t"><span>5分K</span><span>進出場標記</span></div><div id="kdchart" style="height:280px"></div></div>
 <div class="pane"><div class="t"><span>5分 KD(9,3,3)</span><span style="color:#e6e8ee">K <b id="kdk5"></b></span><span style="color:var(--ma20)">D <b id="kdd5"></b></span></div><div id="kd5" style="height:120px"></div></div>
 
-<div class="card"><div class="k" style="margin-bottom:4px">最近交易（1 口點數；停損＝虧損離場，出場＝停利離場）</div>
+<div class="card"><div class="k" style="margin-bottom:4px">交易紀錄（1 口點數；停損＝虧損離場，出場＝停利離場；最上方為未出場部位與防守價調整，「鎖」＝觸價出場可保住的點數）</div>
 <div style="overflow-x:auto"><table><thead><tr><th>進場</th><th>出場</th><th>方向</th><th>進→出</th><th>原因</th><th>點數</th></tr></thead><tbody id="kdtr"></tbody></table></div></div>
 <div class="err" id="err"></div>
 <p class="rules">策略：以 60分K 的 20MA／120MA 決定方向（20MA 在上偏多、在下偏空）。偏多時，60分 KD 的 K 值低於 50 且上彎，同時 5分 KD 黃金交叉，下一根 5分K 開盤做多；偏空時相反（K 高於 50 且下彎＋5分 KD 死亡交叉做空）。進場後以最有利價格 ∓ 2×ATR(60分) 設防守價：仍在虧損區稱「停損價」，越過進場價後稱「停利出場價」；60分均線反轉也會平倉。停損後等下一次 KD 條件成立才再進場。資料來源：臺灣期貨交易所（含夜盤），圖表每 5 分鐘更新，報價每 10 秒更新。僅供參考，非投資建議。</p>
@@ -138,7 +138,12 @@ function drawKD(x){if(!x||!x.bars5){$('kdupd').textContent='資料準備中…';
   $('kdk5').textContent=f1(st.k5);$('kdd5').textContent=f1(st.d5);
   $('kdpts').innerHTML=`<span class="${st.sim_pts>=0?'up':'down'}">${st.sim_pts>=0?'+':''}${f0(st.sim_pts)} 點</span>`;
   $('kdptsSub').textContent=`${st.sim_trades} 筆｜歷史重播 ${st.hist_from.slice(5,10)} 起 ${st.hist_pts>=0?'+':''}${f0(st.hist_pts)} 點／${st.hist_trades} 筆`;
-  $('kdtr').innerHTML=x.trades.map(t=>`<tr><td>${t.entry_t.slice(5).replace('-','/')}</td><td>${t.exit_t.slice(5).replace('-','/')}</td><td class="${t.side>0?'up':'down'}">${t.side>0?'多':'空'}</td><td>${f0(t.entry)}→${f0(t.exit)}</td><td class="${t.why.startsWith('出場')?'up':''}">${t.why.replace('（均線反轉）','*')}</td><td class="${t.pts>=0?'up':'down'}">${t.pts>=0?'+':''}${f0(t.pts)}</td></tr>`).join('');}
+  const md=t=>t.slice(5).replace('-','/'),sg=v=>(v>=0?'+':'')+f0(v);let rows='';const op=x.open;
+  if(op){const fl=(price-op.entry)*op.side;
+    rows+=`<tr style="background:rgba(245,165,36,.08)"><td>${md(op.entry_t)}</td><td>未出場</td><td class="${op.side>0?'up':'down'}">${op.side>0?'多':'空'}</td><td>${f0(op.entry)}→<span id="opPx">${f0(price)}</span></td><td>持有</td><td id="opPts" class="${fl>=0?'up':'down'}">${sg(fl)}</td></tr>`;
+    rows+=op.adj.map(a=>{const w=a.lock>0,nm=w?'停利':'停損';
+      return `<tr style="color:#8b93a7"><td>${md(a.t)}</td><td>防守價</td><td></td><td>${a.frm==null?'':f0(a.frm)+'→'}${f0(a.to)}</td><td>${a.frm==null?'設定'+nm:((a.to>a.frm)?'調高':'調低')+nm}</td><td class="${w?'up':'down'}">${w?'鎖 ':''}${sg(a.lock)}</td></tr>`}).join('')}
+  $('kdtr').innerHTML=rows+x.trades.map(t=>`<tr><td>${md(t.entry_t)}</td><td>${md(t.exit_t)}</td><td class="${t.side>0?'up':'down'}">${t.side>0?'多':'空'}</td><td>${f0(t.entry)}→${f0(t.exit)}</td><td class="${t.why.startsWith('出場')?'up':''}">${t.why.replace('（均線反轉）','*')}</td><td class="${t.pts>=0?'up':'down'}">${t.pts>=0?'+':''}${f0(t.pts)}</td></tr>`).join('');}
 
 // ── 電腦跳出提醒（網頁開著時，訊號一變就跳通知＋提示音）──
 const NB=$('ntfBtn');
@@ -198,7 +203,8 @@ function applyQuote(q){const px=q.c;if(!G.ref)return;
   bump(G.cs60,s60C,barStartNow(),px);bump(G.kdcs,kdC,b5Now(),px);
   const kk=G.kd;if(kk){
     if(kk.pos)$('kdposSub').textContent=`${kk.entry_t.slice(5)} 進場 ${f0(kk.entry)}｜浮動 ${f0((px-kk.entry)*kk.pos)} 點`;
-    if(kk.stop)$('kdstopSub').textContent=`距目前 ${f0(Math.abs(px-kk.stop))} 點`;}}
+    if(kk.stop)$('kdstopSub').textContent=`距目前 ${f0(Math.abs(px-kk.stop))} 點`;
+    if(kk.pos&&$('opPx')){const fl=(px-kk.entry)*kk.pos;$('opPx').textContent=f0(px);$('opPts').textContent=(fl>=0?'+':'')+f0(fl);$('opPts').className=fl>=0?'up':'down'}}}
 async function tick(){const m=sessionNow();if(!m||document.hidden)return;
   try{const d=(await (await fetch(QURL,{cache:'no-store'})).json()).data[0];
     const tt=new Date(d['200007']*1000+8*3600e3).toISOString().slice(11,19).replace(/:/g,'');

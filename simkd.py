@@ -19,6 +19,7 @@ import sim60 as M
 
 SIM_START = "2026-11-11 12:00"
 MULT = 2.0
+ADJ_MIN = 50          # 防守價變動達 50 點才記一筆調整紀錄
 SIDE = {1: "做多", -1: "做空", 0: "空手"}
 TAG = "🎯【60分＋KD】"
 
@@ -51,7 +52,7 @@ def replay(F, H):
         done = s + dt.timedelta(minutes=5) >= ts(k) + dt.timedelta(hours=1)
         return j if (done and j < len(hk) and hk[j] == k) else j - 1
 
-    pos = 0; e = ext = 0.0; act = 0; ent = None; trades = []; ev = []
+    pos = 0; e = ext = 0.0; act = 0; ent = None; trades = []; ev = []; adj = []; rec = None   # adj＝目前部位的防守價調整紀錄
     for i in range(1, len(F)):
         b = F[i]
         if act != pos and (act or pos):
@@ -59,7 +60,7 @@ def replay(F, H):
                 k = "exit" if pos * (b["o"] - e) > 0 else "stop"
                 trades.append(dict(entry_t=ent, exit_t=b["t"], side=pos, entry=e, exit=b["o"],
                                    why=("出場" if k == "exit" else "停損") + "（均線反轉）")); ev.append((b["t"], k, pos)); pos = 0
-            if act: pos, e, ext, ent = act, b["o"], b["o"], b["t"]; ev.append((b["t"], "entry", pos))
+            if act: pos, e, ext, ent = act, b["o"], b["o"], b["t"]; ev.append((b["t"], "entry", pos)); adj = []; rec = None
         c = c60(i - 1)
         if pos and c >= 0 and ind["atr"][c]:
             st = ext - pos * MULT * ind["atr"][c]
@@ -70,6 +71,10 @@ def replay(F, H):
                 ev.append((b["t"], k, pos)); pos = 0
         if pos: ext = max(ext, b["h"]) if pos > 0 else min(ext, b["l"])
         c = c60(i); act = pos
+        if pos and c >= 0 and ind["atr"][c]:
+            cur = ext - pos * MULT * ind["atr"][c]
+            if rec is None: rec = cur; adj.append(dict(t=b["t"], frm=None, to=cur))
+            elif abs(cur - rec) >= ADJ_MIN: adj.append(dict(t=b["t"], frm=rec, to=cur)); rec = cur
         a20, a120 = (ind["ma20"][c], ind["ma120"][c]) if c >= 1 else (None, None)
         tr = 0 if a20 is None or a120 is None else (1 if a20 > a120 else -1)
         if pos and tr != pos: act = 0
@@ -82,7 +87,7 @@ def replay(F, H):
     return dict(pos=pos, entry=e if pos else None, entry_t=ent if pos else None,
                 stop=(ext - pos * MULT * atr) if pos else None, act=act, trend=tr, atr=atr,
                 k60=K60[c], k60p=K60[c - 1], h60=H[c]["t"], ma20=ind["ma20"][c], ma120=ind["ma120"][c],
-                K5=K5, D5=D5, K60=K60, ind=ind, trades=trades, events=ev)
+                adj=adj if pos else [], K5=K5, D5=D5, K60=K60, ind=ind, trades=trades, events=ev)
 
 
 def main():
@@ -161,6 +166,9 @@ def main():
                     k60=r1(st["k60"]), k60p=r1(st["k60p"]), h60=st["h60"], k5=r1(st["K5"][-1]), d5=r1(st["D5"][-1]),
                     last_t=last["t"], last_c=last["c"], sim_pts=round(pts), sim_trades=len(real),
                     hist_pts=round(hist), hist_trades=len(st["trades"]), hist_from=F[0]["t"]),
+        open=(dict(entry_t=st["entry_t"], side=st["pos"], entry=round(st["entry"]), last=round((forming or last)["c"]),
+                   adj=[dict(t=x["t"], frm=None if x["frm"] is None else round(x["frm"]), to=round(x["to"]),
+                             lock=round(st["pos"] * (x["to"] - st["entry"]))) for x in st["adj"][-10:]][::-1]) if st["pos"] else None),
         trades=[dict(entry_t=x["entry_t"], exit_t=x["exit_t"], side=x["side"], entry=round(x["entry"]), exit=round(x["exit"]),
                      why=x["why"], pts=round(x["side"] * (x["exit"] - x["entry"]))) for x in st["trades"][-12:]][::-1])
     json.dump(page, open(page_path, "w", encoding="utf-8"), ensure_ascii=False)
