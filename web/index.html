@@ -35,7 +35,7 @@
 <body>
 <header>
   <div>
-    <h1>小台指期近月　日K</h1>
+    <h1>小台指期近月</h1>
     <div class="sub" id="upd">載入中…</div>
   </div>
   <div style="text-align:right">
@@ -44,6 +44,36 @@
   </div>
 </header>
 
+<h2 style="font-size:15px;margin:4px 0 6px">🎯 60分方向＋KD進場 模擬<span class="sub">　僅供觀察，與日K實單訊號分開</span></h2>
+<div class="sub" id="kdupd" style="margin-bottom:6px">—</div>
+<div class="grid">
+  <div class="card next" id="kdnextCard"><div class="k">下一步（模擬）</div><div class="v" id="kdnext" style="font-size:16px">—</div><div class="sub" id="kdnextSub"></div></div>
+  <div class="card"><div class="k">模擬部位</div><div class="v" id="kdpos">—</div><div class="sub" id="kdposSub"></div></div>
+  <div class="card"><div class="k" id="kdstopK">防守價</div><div class="v" id="kdstop">—</div><div class="sub" id="kdstopSub"></div></div>
+  <div class="card"><div class="k">方向：60分 20MA／120MA</div><div class="v" id="kdma">—</div><div class="sub" id="kdmaSub"></div></div>
+  <div class="card"><div class="k">時機：60分K／5分K、D</div><div class="v" id="kdkd">—</div><div class="sub" id="kdkdSub"></div></div>
+  <div class="card" style="grid-column:1/-1"><div class="k">模擬累計（自 11/11 12:00 起）</div><div class="v" id="kdpts">—</div><div class="sub" id="kdptsSub"></div></div>
+</div>
+<div class="pane"><div class="t"><span>5分K</span><span>進出場標記</span></div><div id="kdchart" style="height:280px"></div></div>
+<div class="pane"><div class="t"><span>5分 KD(9,3,3)</span><span style="color:#e6e8ee">K <b id="kdk5"></b></span><span style="color:var(--ma20)">D <b id="kdd5"></b></span></div><div id="kd5" style="height:120px"></div></div>
+<div class="pane"><div class="t"><span>60分 K 值（50 為多空分界）</span><b id="kdk60"></b></div><div id="kd60" style="height:110px"></div></div>
+<div class="card"><div class="k" style="margin-bottom:4px">60分＋KD模擬 最近交易（1 口點數；停損＝虧損離場，出場＝停利離場）</div>
+<table><thead><tr><th>進場</th><th>出場</th><th>方向</th><th>進→出</th><th>原因</th><th>點數</th></tr></thead><tbody id="kdtr"></tbody></table></div>
+<h2 style="font-size:15px;margin:22px 0 6px">🧪 60分K 模擬（20/120＋2倍ATR）<span class="sub">　僅供觀察，與日K實單訊號分開</span></h2>
+<div class="sub" id="s60upd" style="margin-bottom:6px">—</div>
+<div class="grid">
+  <div class="card next" id="s60nextCard"><div class="k">下一步（模擬）</div><div class="v" id="s60next">—</div><div class="sub" id="s60nextSub"></div></div>
+  <div class="card"><div class="k">模擬部位</div><div class="v" id="s60pos">—</div><div class="sub" id="s60posSub"></div></div>
+  <div class="card"><div class="k" id="s60stopK">防守價</div><div class="v" id="s60stop">—</div><div class="sub" id="s60stopSub"></div></div>
+  <div class="card"><div class="k">模擬累計（自 11/11 起）</div><div class="v" id="s60pts">—</div><div class="sub" id="s60ptsSub"></div></div>
+  <div class="card"><div class="k">60分 20MA ／ 120MA</div><div class="v" id="s60ma">—</div><div class="sub" id="s60maSub"></div></div>
+</div>
+<div class="pane"><div class="t"><span>60分K</span><span style="color:var(--ma20)">20MA</span><span style="color:var(--ma120)">120MA</span></div><div id="s60chart" style="height:300px"></div></div>
+<div class="pane"><div class="t"><span>60分 MACD(12,26,9)</span><span>DIF <b id="s60dif"></b></span><span>DEA <b id="s60dea"></b></span><span>柱 <b id="s60h"></b></span></div><div id="s60macd" style="height:130px"></div></div>
+<div class="pane"><div class="t"><span>60分 KD(9,3,3)</span><span style="color:#e6e8ee">K <b id="s60k"></b></span><span style="color:var(--ma20)">D <b id="s60d"></b></span></div><div id="s60kd" style="height:130px"></div></div>
+<div class="card"><div class="k" style="margin-bottom:4px">60分模擬 最近交易（1 口點數；停損＝虧損離場，出場＝停利離場）</div>
+<table><thead><tr><th>進場</th><th>出場</th><th>方向</th><th>進→出</th><th>原因</th><th>點數</th></tr></thead><tbody id="s60tr"></tbody></table></div>
+<h2 style="font-size:15px;margin:22px 0 6px">📈 日K 實單策略（20/120＋2倍ATR）</h2>
 <div class="grid">
   <div class="card next" id="nextCard"><div class="k">下一步</div><div class="v" id="next">—</div><div class="sub" id="nextSub"></div></div>
   <div class="card"><div class="k">目前部位</div><div class="v" id="pos">—</div><div class="sub" id="posSub"></div></div>
@@ -60,20 +90,6 @@
   <div class="k" style="margin-bottom:4px">最近交易（策略重播，1 口點數；停損＝虧損離場，出場＝停利離場，*＝因均線反轉）</div>
   <table><thead><tr><th>進場</th><th>出場</th><th>方向</th><th>進→出</th><th>原因</th><th>點數</th></tr></thead><tbody id="tr"></tbody></table>
 </div>
-<h2 style="font-size:15px;margin:22px 0 6px">🧪 60分K 模擬（20/120＋2倍ATR）<span class="sub">　僅供觀察，與上方日K實單訊號分開</span></h2>
-<div class="sub" id="s60upd" style="margin-bottom:6px">—</div>
-<div class="grid">
-  <div class="card next" id="s60nextCard"><div class="k">下一步（模擬）</div><div class="v" id="s60next">—</div><div class="sub" id="s60nextSub"></div></div>
-  <div class="card"><div class="k">模擬部位</div><div class="v" id="s60pos">—</div><div class="sub" id="s60posSub"></div></div>
-  <div class="card"><div class="k" id="s60stopK">防守價</div><div class="v" id="s60stop">—</div><div class="sub" id="s60stopSub"></div></div>
-  <div class="card"><div class="k">模擬累計（自 11/11 起）</div><div class="v" id="s60pts">—</div><div class="sub" id="s60ptsSub"></div></div>
-  <div class="card"><div class="k">60分 20MA ／ 120MA</div><div class="v" id="s60ma">—</div><div class="sub" id="s60maSub"></div></div>
-</div>
-<div class="pane"><div class="t"><span>60分K</span><span style="color:var(--ma20)">20MA</span><span style="color:var(--ma120)">120MA</span></div><div id="s60chart" style="height:300px"></div></div>
-<div class="pane"><div class="t"><span>60分 MACD(12,26,9)</span><span>DIF <b id="s60dif"></b></span><span>DEA <b id="s60dea"></b></span><span>柱 <b id="s60h"></b></span></div><div id="s60macd" style="height:130px"></div></div>
-<div class="pane"><div class="t"><span>60分 KD(9,3,3)</span><span style="color:#e6e8ee">K <b id="s60k"></b></span><span style="color:var(--ma20)">D <b id="s60d"></b></span></div><div id="s60kd" style="height:130px"></div></div>
-<div class="card"><div class="k" style="margin-bottom:4px">60分模擬 最近交易（1 口點數；停損＝虧損離場，出場＝停利離場）</div>
-<table><thead><tr><th>進場</th><th>出場</th><th>方向</th><th>進→出</th><th>原因</th><th>點數</th></tr></thead><tbody id="s60tr"></tbody></table></div>
 <div class="err" id="err"></div>
 <p class="rules">策略：日K收盤 20MA&gt;120MA 做多、&lt; 做空，下一個交易時段（夜盤15:00）開盤執行；進場後以最有利價格 ∓ 2×ATR(14) 設防守價：防守價仍在虧損區稱「停損價」，越過進場價後稱「停利出場價」。離場後若均線方向不變，下一個交易時段再進場。資料來源：臺灣期貨交易所（日K含夜盤），圖表資料每 5 分鐘更新，報價每 10 秒更新。僅供參考，非投資建議。</p>
 
@@ -152,7 +168,7 @@ async function load(){
     document.getElementById('ldif').textContent=f1(last.dif);document.getElementById('ldea').textContent=f1(last.dea);document.getElementById('lh').textContent=f1(last.hist);
     document.getElementById('lk').textContent=f1(last.K);document.getElementById('ld').textContent=f1(last.D);
     document.getElementById('tr').innerHTML=j.trades.map(t=>`<tr><td>${t.entry_date.slice(5).replace('-','/')}</td><td>${t.exit_date.slice(5).replace('-','/')}</td><td class="${t.side>0?'up':'down'}">${t.side>0?'多':'空'}</td><td>${f0(t.entry)}→${f0(t.exit)}</td><td class="${t.why.startsWith('出場')?'up':''}">${t.why.replace('（均線反轉）','*')}</td><td class="${t.pts>=0?'up':'down'}">${t.pts>=0?'+':''}${f0(t.pts)}</td></tr>`).join('');
-    drawSim60(j.sim60);if(G.q&&Date.now()-G.qAt<30000)applyQuote(G.q);
+    drawKD(j.simkd);drawSim60(j.sim60);if(G.q&&Date.now()-G.qAt<30000)applyQuote(G.q);
     const bad=(j.log||[]).filter(x=>x.includes('失敗'));document.getElementById('err').textContent=bad.join('；');
   }catch(e){document.getElementById('err').textContent='資料載入失敗：'+e.message}
 }
@@ -203,6 +219,52 @@ function drawSim60(x){if(!x||!x.bars){document.getElementById('s60upd').textCont
   if(st.want!==st.pos){nc.classList.add(st.want>0?'go-long':'go-short');document.getElementById('s60next').innerHTML=`<span class="${st.want>0?'up':'down'}">${st.pos===0?'進場':'反手'}${side[st.want]}</span>`;document.getElementById('s60nextSub').textContent=`下一根60分K開盤，停損約 ${f0(2*st.atr)} 點`}
   else{document.getElementById('s60next').textContent=st.pos?`續抱${side[st.pos]}`:'觀望';document.getElementById('s60nextSub').textContent=st.pos?(win?`觸及 ${f0(st.stop)} 停利出場`:`觸及 ${f0(st.stop)} 停損`):'等均線訊號'}
   document.getElementById('s60tr').innerHTML=x.trades.map(t=>`<tr><td>${t.entry_t.slice(5).replace('-','/')}</td><td>${t.exit_t.slice(5).replace('-','/')}</td><td class="${t.side>0?'up':'down'}">${t.side>0?'多':'空'}</td><td>${f0(t.entry)}→${f0(t.exit)}</td><td class="${t.why.startsWith('出場')?'up':''}">${t.why}</td><td class="${t.pts>=0?'up':'down'}">${t.pts>=0?'+':''}${f0(t.pts)}</td></tr>`).join('');}
+// ── 60分方向＋KD進場 模擬 ──
+const mkc=(id,h,o={})=>LightweightCharts.createChart(document.getElementById(id),{...base,height:h,width:document.getElementById(id).clientWidth,timeScale:{...base.timeScale,timeVisible:true,secondsVisible:false},...o});
+const cK=mkc('kdchart',280),cK5=mkc('kd5',120),cK60=mkc('kd60',110);
+const kdC=cK.addCandlestickSeries({upColor:UP,downColor:DOWN,borderUpColor:UP,borderDownColor:DOWN,wickUpColor:UP,wickDownColor:DOWN});
+const kd5K=cK5.addLineSeries({color:'#e6e8ee',lineWidth:1.5,priceLineVisible:false,lastValueVisible:false});
+const kd5D=cK5.addLineSeries({color:'#f5a524',lineWidth:1.5,priceLineVisible:false,lastValueVisible:false});
+[80,50,20].forEach(v=>kd5K.createPriceLine({price:v,color:'#3a4252',lineWidth:1,lineStyle:2,axisLabelVisible:false}));
+const kd60K=cK60.addLineSeries({color:'#c084fc',lineWidth:2,priceLineVisible:false,lastValueVisible:false});
+kd60K.createPriceLine({price:50,color:'#8b93a7',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'50'});
+let syncK=false;[cK,cK5].forEach(c=>c.timeScale().subscribeVisibleLogicalRangeChange(r=>{if(syncK||!r)return;syncK=true;[cK,cK5].forEach(o=>o!==c&&o.timeScale().setVisibleLogicalRange(r));syncK=false}));
+window.addEventListener('resize',()=>[['kdchart',cK],['kd5',cK5],['kd60',cK60]].forEach(([id,c])=>c.applyOptions({width:document.getElementById(id).clientWidth})));
+let kdLine=null;
+function b5Now(){const t=twNow(),h=t.getUTCHours(),mi=t.getUTCMinutes(),hm=h*100+mi;
+  if(!((hm>=845&&hm<1345)||hm>=1500||hm<500))return null;
+  return t.toISOString().slice(0,10)+' '+String(h).padStart(2,'0')+':'+String(mi-mi%5).padStart(2,'0')}
+function drawKD(x){if(!x||!x.bars5){document.getElementById('kdupd').textContent='資料準備中…';return}
+  const st=x.status,side={1:'做多',[-1]:'做空',0:'空手'};
+  const cs=x.bars5.map(b=>({time:ts(b.t),open:b.o,high:b.h,low:b.l,close:b.c}));
+  if(x.forming&&ts(x.forming.t)>cs[cs.length-1].time)cs.push({time:ts(x.forming.t),open:x.forming.o,high:x.forming.h,low:x.forming.l,close:x.forming.c});
+  kdC.setData(cs);G.kdcs=cs;G.kd=st;
+  kd5K.setData(x.bars5.map(b=>({time:ts(b.t),value:b.K})));kd5D.setData(x.bars5.map(b=>({time:ts(b.t),value:b.D})));
+  kd60K.setData(x.k60.map(b=>({time:ts(b.t),value:b.K})));
+  kdC.setMarkers(x.markers.map(m=>m.kind==='entry'?{time:ts(m.t),position:m.side>0?'belowBar':'aboveBar',color:m.side>0?UP:DOWN,shape:m.side>0?'arrowUp':'arrowDown',text:m.side>0?'多':'空'}
+    :m.kind==='stop'?{time:ts(m.t),position:m.side>0?'belowBar':'aboveBar',color:'#9aa3b5',shape:'square',text:'停損'}:{time:ts(m.t),position:m.side>0?'aboveBar':'belowBar',color:'#f5a524',shape:'circle',text:'出場'}));
+  const win=st.stop&&st.pos*(st.stop-st.entry)>0;if(kdLine){kdC.removePriceLine(kdLine);kdLine=null}
+  if(st.stop)kdLine=kdC.createPriceLine({price:st.stop,color:win?'#f5a524':'#9aa3b5',lineWidth:1,lineStyle:2,title:win?'停利出場':'停損'});
+  if(!window._fk){cK.timeScale().setVisibleLogicalRange({from:cs.length-90,to:cs.length+2});cK60.timeScale().fitContent();window._fk=1}
+  const price=x.forming?x.forming.c:st.last_c;
+  document.getElementById('kdupd').textContent=`最新5分K ${st.last_t.slice(5)}　更新 ${x.updated}`;
+  const nc=document.getElementById('kdnextCard');nc.className='card next';
+  if(st.act!==st.pos&&st.act)nc.classList.add(st.act>0?'go-long':'go-short');
+  document.getElementById('kdnext').innerHTML=st.act!==st.pos&&st.act?`<span class="${st.act>0?'up':'down'}">${st.next}</span>`:st.next;
+  document.getElementById('kdnextSub').textContent=st.pos?(win?`觸及 ${f0(st.stop)} 停利出場；或60分均線反轉出場`:`觸及 ${f0(st.stop)} 停損；或60分均線反轉出場`):(st.act?`停損約 ${f0(2*st.atr)} 點`:'');
+  document.getElementById('kdpos').innerHTML=`<span class="${st.pos>0?'up':st.pos<0?'down':''}">${side[st.pos]}</span>`;
+  document.getElementById('kdposSub').textContent=st.pos?`${st.entry_t.slice(5)} 進場 ${f0(st.entry)}｜浮動 ${f0((price-st.entry)*st.pos)} 點`:'';
+  document.getElementById('kdstopK').textContent=st.stop?(win?'停利出場價':'停損價'):'停損／停利出場價';
+  document.getElementById('kdstop').textContent=st.stop?f0(st.stop):'—';document.getElementById('kdstopSub').textContent=st.stop?`距目前 ${f0(Math.abs(price-st.stop))} 點`:'目前無部位';
+  document.getElementById('kdma').innerHTML=`<span class="${st.trend>0?'up':st.trend<0?'down':''}">${st.trend>0?'偏多':st.trend<0?'偏空':'—'}</span>`;
+  document.getElementById('kdmaSub').textContent=`${f0(st.ma20)} ／ ${f0(st.ma120)}`;
+  const turn=st.k60>st.k60p?'上彎':'下彎',ok60=st.trend>0?(st.k60<50&&st.k60>st.k60p):st.trend<0?(st.k60>50&&st.k60<st.k60p):false;
+  document.getElementById('kdkd').innerHTML=`${f1(st.k60)}<span class="sub"> ${turn}</span> ／ ${f1(st.k5)}、${f1(st.d5)}`;
+  document.getElementById('kdkdSub').textContent=`60分條件${ok60?'✅ 成立':'✖ 未成立'}（${st.h60.slice(11)} 那根）`;
+  document.getElementById('kdk5').textContent=f1(st.k5);document.getElementById('kdd5').textContent=f1(st.d5);document.getElementById('kdk60').textContent=f1(st.k60);
+  document.getElementById('kdpts').innerHTML=`<span class="${st.sim_pts>=0?'up':'down'}">${st.sim_pts>=0?'+':''}${f0(st.sim_pts)} 點</span>`;
+  document.getElementById('kdptsSub').textContent=`${st.sim_trades} 筆｜歷史重播 ${st.hist_from.slice(5,10)} 起 ${st.hist_pts>=0?'+':''}${f0(st.hist_pts)} 點／${st.hist_trades} 筆`;
+  document.getElementById('kdtr').innerHTML=x.trades.map(t=>`<tr><td>${t.entry_t.slice(5).replace('-','/')}</td><td>${t.exit_t.slice(5).replace('-','/')}</td><td class="${t.side>0?'up':'down'}">${t.side>0?'多':'空'}</td><td>${f0(t.entry)}→${f0(t.exit)}</td><td class="${t.why.startsWith('出場')?'up':''}">${t.why}</td><td class="${t.pts>=0?'up':'down'}">${t.pts>=0?'+':''}${f0(t.pts)}</td></tr>`).join('');}
 const QURL='https://ws.api.cnyes.com/ws/api/v1/quote/quotes/TWF:MXF:FUTURES';   // 鉅亨網小台近月即時報價（允許網頁直接讀取）
 const G={};
 function twNow(){return new Date(Date.now()+8*3600e3)}   // 以 UTC 欄位讀取＝台北時間
@@ -225,7 +287,13 @@ function applyQuote(q){const px=q.c,st=G.st;if(!st)return;
       if(tt>c.time){c={time:tt,open:px,high:px,low:px,close:px};cs.push(c)}
       if(tt===c.time){c.high=Math.max(c.high,px);c.low=Math.min(c.low,px);c.close=px;s60C.update(c)}}
     if(s6.pos)document.getElementById('s60posSub').textContent=`${s6.entry_t.slice(5)} 進場 ${f0(s6.entry)}｜浮動 ${f0((px-s6.entry)*s6.pos)} 點`;
-    if(s6.stop)document.getElementById('s60stopSub').textContent=`距目前 ${f0(Math.abs(px-s6.stop))} 點`;}}
+    if(s6.stop)document.getElementById('s60stopSub').textContent=`距目前 ${f0(Math.abs(px-s6.stop))} 點`;}
+  const kk=G.kd,kc=G.kdcs;if(kk&&kc&&kc.length){const k=b5Now();
+    if(k){const tt=ts(k);let c=kc[kc.length-1];
+      if(tt>c.time){c={time:tt,open:px,high:px,low:px,close:px};kc.push(c)}
+      if(tt===c.time){c.high=Math.max(c.high,px);c.low=Math.min(c.low,px);c.close=px;kdC.update(c)}}
+    if(kk.pos)document.getElementById('kdposSub').textContent=`${kk.entry_t.slice(5)} 進場 ${f0(kk.entry)}｜浮動 ${f0((px-kk.entry)*kk.pos)} 點`;
+    if(kk.stop)document.getElementById('kdstopSub').textContent=`距目前 ${f0(Math.abs(px-kk.stop))} 點`;}}
 async function tick(){const m=sessionNow();if(!QURL||!m||document.hidden)return;
   try{const d=(await (await fetch(QURL,{cache:'no-store'})).json()).data[0];
     const tt=new Date(d['200007']*1000+8*3600e3).toISOString().slice(11,19).replace(/:/g,'');

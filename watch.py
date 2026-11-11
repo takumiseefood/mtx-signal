@@ -25,6 +25,8 @@ def levels():
     if s.get("pos") and s.get("stop"): out.append(("日K", s["pos"], s["stop"]))
     s = (d.get("sim60") or {}).get("status") or {}
     if s.get("pos") and s.get("stop"): out.append(("60分", s["pos"], s["stop"]))
+    s = (d.get("simkd") or {}).get("status") or {}
+    if s.get("pos") and s.get("stop"): out.append(("KD", s["pos"], s["stop"]))
     return out
 
 

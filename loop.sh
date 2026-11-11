@@ -27,6 +27,7 @@ while [ $SECONDS -lt $END ]; do
   echo "── $(TZ=Asia/Taipei date '+%F %T')"
   python signal.py || echo "signal.py 失敗"
   python sim60.py || echo "sim60.py 失敗"
+  python simkd.py || echo "simkd.py 失敗"
   git add data/
   if ! git diff --cached --quiet; then
     git commit -qm "update data $(TZ=Asia/Taipei date '+%F %R')" && (git push -q origin HEAD:main || (git pull -q --rebase origin main && git push -q origin HEAD:main))

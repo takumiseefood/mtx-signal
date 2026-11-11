@@ -41,6 +41,38 @@ def bar_start(d: dt.datetime):
     return None
 
 
+def b5_start(x: dt.datetime):
+    """5 分K 開始時間；13:45 與 05:00 的最後一筆歸入前一根"""
+    hm = x.hour * 100 + x.minute
+    if hm in (1345, 500): x -= dt.timedelta(minutes=5)
+    elif not (845 <= hm < 1345 or hm >= 1500 or hm < 500): return None
+    return x.replace(minute=x.minute - x.minute % 5, second=0, microsecond=0).strftime("%Y-%m-%d %H:%M")
+
+
+CSV5 = os.path.join(ROOT, "data", "mtx_5m.csv")
+FIVE = {}          # 本次從逐筆檔組出的 5 分K
+LIVE5 = {}         # 本次從 1 分K 組出的 5 分K
+
+
+def load5():
+    if not os.path.exists(CSV5): return {}
+    with open(CSV5, encoding="utf-8") as f:
+        return {r["t"]: dict(t=r["t"], o=float(r["o"]), h=float(r["h"]), l=float(r["l"]), c=float(r["c"])) for r in csv.DictReader(f)}
+
+
+def save5(bars):
+    keys = sorted(bars)[-12000:]
+    with open(CSV5, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f); w.writerow(["t", "o", "h", "l", "c"])
+        for k in keys: b = bars[k]; w.writerow([k, b["o"], b["h"], b["l"], b["c"]])
+
+
+def _put(store, k, o, h, l, c):
+    b = store.get(k)
+    if b is None: store[k] = dict(t=k, o=o, h=h, l=l, c=c)
+    else: b["h"] = max(b["h"], h); b["l"] = min(b["l"], l); b["c"] = c
+
+
 # ───────────── 期交所逐筆 → 60 分 K ─────────────
 def fetch_tick_day(date: dt.date):
     url = f"https://www.taifex.com.tw/file/taifex/Dailydownload/DailydownloadCSV/Daily_{date:%Y_%m_%d}.zip"
@@ -61,6 +93,8 @@ def fetch_tick_day(date: dt.date):
     m = max(vol, key=vol.get); bars = {}
     for d8, t6, px in ticks[m]:
         x = dt.datetime.strptime(d8 + t6, "%Y%m%d%H%M%S").replace(tzinfo=TZ); k = bar_start(x)
+        k5 = b5_start(x)
+        if k5: _put(FIVE, k5, px, px, px, px)
         if not k: continue
         b = bars.get(k)
         if b is None: bars[k] = dict(t=k, o=px, h=px, l=px, c=px)
@@ -93,6 +127,7 @@ def update_ticks(bars, log):
         bars.update(nb); done.add(d.isoformat()); changed = True; got += 1
     if changed:
         save60(bars); json.dump(sorted(done)[-60:], open(FILES, "w"))
+        if FIVE: f5 = load5(); f5.update(FIVE); save5(f5)
     log.append(f"60分逐筆檔 +{got} 天（共 {len(bars)} 根）")
     return bars
 
@@ -135,6 +170,8 @@ def fetch_minutes(market, log):
         k = bar_start(stamp(T, shift))
         if not k: continue
         o, h, l, c = float(o), float(h), float(l), float(c)
+        k5 = b5_start(stamp(T, shift))
+        if k5: _put(LIVE5, k5, o, h, l, c)
         b = out.get(k)
         if b is None: out[k] = dict(t=k, o=o, h=h, l=l, c=c)
         else: b["h"] = max(b["h"], h); b["l"] = min(b["l"], l); b["c"] = c
@@ -171,6 +208,10 @@ def update_live(bars, log):
                 if kk not in bars: st["bars"][kk] = b
         except Exception as ex:
             log.append(f"60分 1分K失敗（{mk}）：{ex}")
+    f5 = set(load5())
+    b5 = {kk: v for kk, v in (st.get("bars5") or {}).items() if kk not in f5}
+    b5.update({kk: v for kk, v in LIVE5.items() if kk not in f5})
+    st["bars5"] = {kk: b5[kk] for kk in sorted(b5)[-400:]}
     os.makedirs(SITE, exist_ok=True); json.dump(st, open(LIVE, "w"))
     return st["bars"], k
 
