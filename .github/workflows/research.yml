@@ -1,0 +1,16 @@
+name: research-5m
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  r:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: python research/build5m.py
+      - run: |
+          mkdir /tmp/r && cp mtx_5m.csv /tmp/r/ && cd /tmp/r && git init -q && git checkout -q -b research
+          git add . && git -c user.name=bot -c user.email=bot@users.noreply.github.com commit -qm 5m
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" research
