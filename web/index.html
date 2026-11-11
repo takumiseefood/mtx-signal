@@ -46,6 +46,7 @@
 
 <h2 style="font-size:15px;margin:4px 0 6px">🎯 60分方向＋KD進場<span class="sub">　策略訊號，僅供參考</span></h2>
 <div class="sub" id="kdupd" style="margin-bottom:6px">—</div>
+<button id="ntfBtn" style="margin:0 0 8px;padding:8px 12px;border-radius:10px;border:1px solid #2a3040;background:#171a21;color:#e6e8ee;font-size:13px;cursor:pointer">🔔 開啟電腦提醒</button>
 <div class="grid">
   <div class="card next" id="kdnextCard"><div class="k">下一步</div><div class="v" id="kdnext" style="font-size:16px">—</div><div class="sub" id="kdnextSub"></div></div>
   <div class="card"><div class="k">部位</div><div class="v" id="kdpos">—</div><div class="sub" id="kdposSub"></div></div>
@@ -139,6 +140,29 @@ function drawKD(x){if(!x||!x.bars5){$('kdupd').textContent='資料準備中…';
   $('kdptsSub').textContent=`${st.sim_trades} 筆｜歷史重播 ${st.hist_from.slice(5,10)} 起 ${st.hist_pts>=0?'+':''}${f0(st.hist_pts)} 點／${st.hist_trades} 筆`;
   $('kdtr').innerHTML=x.trades.map(t=>`<tr><td>${t.entry_t.slice(5).replace('-','/')}</td><td>${t.exit_t.slice(5).replace('-','/')}</td><td class="${t.side>0?'up':'down'}">${t.side>0?'多':'空'}</td><td>${f0(t.entry)}→${f0(t.exit)}</td><td class="${t.why.startsWith('出場')?'up':''}">${t.why.replace('（均線反轉）','*')}</td><td class="${t.pts>=0?'up':'down'}">${t.pts>=0?'+':''}${f0(t.pts)}</td></tr>`).join('');}
 
+// ── 電腦跳出提醒（網頁開著時，訊號一變就跳通知＋提示音）──
+const NB=$('ntfBtn');
+function ntfState(){const ok=('Notification' in window)&&Notification.permission==='granted'&&lsGet('ntf')==='1';
+  NB.textContent=!('Notification' in window)?'此瀏覽器不支援跳出提醒':ok?'🔔 電腦提醒：已開啟（點此關閉）':Notification.permission==='denied'?'🔕 提醒被瀏覽器封鎖，請到網址列左側的網站設定允許通知':'🔔 開啟電腦提醒';return ok}
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function beep(){try{const a=new (window.AudioContext||window.webkitAudioContext)();[0,.25,.5].forEach(t=>{const o=a.createOscillator(),g=a.createGain();o.frequency.value=880;o.connect(g);g.connect(a.destination);g.gain.value=.15;o.start(a.currentTime+t);o.stop(a.currentTime+t+.15)})}catch(e){}}
+function popup(title,body){try{const n=new Notification(title,{body,tag:'mtx-'+Date.now(),requireInteraction:true});n.onclick=()=>{window.focus();n.close()}}catch(e){}
+  beep();const t0=document.title;let i=0;const iv=setInterval(()=>{document.title=(i++%2?'🔔 ':'')+title;if(i>40||!document.hidden&&i>6){clearInterval(iv);document.title=t0}},800)}
+NB.onclick=async()=>{if(!('Notification' in window))return;
+  if(ntfState()){lsSet('ntf','0');ntfState();return}
+  const r=await Notification.requestPermission();if(r==='granted'){lsSet('ntf','1');popup('小台訊號：電腦提醒已開啟','之後有進場、停損、停利出場訊號時，會像這樣跳出提醒（網頁需保持開著）')}ntfState()};
+ntfState();
+function checkAlert(x){const st=x.status,t=x.trades[0],side={1:'做多',[-1]:'做空'};
+  const key=[st.pos,st.entry_t||'',st.act,t?t.exit_t:''].join('|'),old=lsGet('ntfKey');lsSet('ntfKey',key);
+  if(!old||old===key||!ntfState())return;
+  const o=old.split('|');let title,body;
+  if(st.act!==st.pos&&st.act){title=`🎯 ${side[st.act]}進場訊號`;body=`下一根5分K開盤${st.act>0?'買進':'賣出'}，停損約 ${f0(2*st.atr)} 點`}
+  else if(st.act!==st.pos&&!st.act){title=`🎯 ${side[st.pos]}單平倉訊號（60分均線反轉）`;body='下一根5分K開盤平倉'}
+  else if(st.pos&&(String(st.pos)!==o[0]||st.entry_t!==o[1])){title=`🎯 已${side[st.pos]}進場 ${f0(st.entry)}`;body=`防守價 ${f0(st.stop)}`}
+  else if(!st.pos&&o[0]!=='0'&&t){title=`🎯 ${side[t.side]}單${t.why.startsWith('出場')?'停利出場':'停損'} ${f0(t.exit)}`;body=`進場 ${f0(t.entry)}，${t.pts>=0?'+':''}${f0(t.pts)} 點`}
+  else return;
+  popup(title,body)}
 function header(price,ref,txt){const d=price-ref;$('px').textContent=f0(price);$('px').className='px '+(d>=0?'up':'down');
   $('chg').textContent=(d>=0?'▲ ':'▼ ')+f0(Math.abs(d))+'　'+(d/ref*100).toFixed(2)+'%';$('chg').className='chg '+(d>=0?'up':'down');$('upd').textContent=txt}
 async function load(){
@@ -149,7 +173,7 @@ async function load(){
     const B=j.bars||[],lv=j.live,last=B[B.length-1],prev=B[B.length-2];
     if(last){G.ref=lv?last.c:prev.c;G.updTxt='　更新 '+j.updated;
       header(lv?lv.c:last.c,G.ref,(lv?`${lv.label}・${lv.time.slice(0,2)}:${lv.time.slice(2,4)}`:`${last.d} 收盤`)+G.updTxt)}
-    drawKD(j.simkd);draw60(j.sim60,j.simkd);
+    drawKD(j.simkd);draw60(j.sim60,j.simkd);if(j.simkd&&j.simkd.status)checkAlert(j.simkd);
     if(G.q&&Date.now()-G.qAt<30000)applyQuote(G.q);
     const bad=[...(j.log||[]),...((j.sim60||{}).log||[])].filter(x=>x.includes('失敗'));$('err').textContent=bad.join('；');
   }catch(e){$('err').textContent='資料載入失敗：'+e.message}
