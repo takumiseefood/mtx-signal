@@ -197,8 +197,11 @@ def load_state():
         return {"sent": []}
 
 
+MUTE = True      # 日K策略已停用：只保留資料與報價，不再推播
+
+
 def notify(key, title, msg, state, priority=4, tags=None):
-    if key in state["sent"]:
+    if MUTE or key in state["sent"]:
         return False
     if NTFY_TOPIC:
         body = json.dumps(dict(topic=NTFY_TOPIC, title=title, message=msg, priority=priority,

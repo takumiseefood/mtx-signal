@@ -20,7 +20,7 @@ import sim60 as M
 SIM_START = "2026-11-11 12:00"
 MULT = 2.0
 SIDE = {1: "做多", -1: "做空", 0: "空手"}
-TAG = "🎯【60分＋KD模擬】"
+TAG = "🎯【60分＋KD】"
 
 
 def kd(B):
@@ -110,23 +110,23 @@ def main():
                      f"{last['t'][5:]} 5分K收盤 {ref:.0f}\n方向：60分 20MA {'>' if a > 0 else '<'} 120MA\n"
                      f"時機：60分K {st['k60']:.0f}（{'<50 上彎' if a > 0 else '>50 下彎'}）＋5分KD{'黃金' if a > 0 else '死亡'}交叉\n"
                      f"▶ 模擬：下一根5分K開盤{'買進' if a > 0 else '賣出'}\n⛔ 停損＝成交價 {'−' if a > 0 else '+'} {dist:.0f} 點（約 {ref - a * dist:.0f}）\n"
-                     f"※ 模擬訊號，僅供觀察", state, 4, ["dart"])
+                     f"※ 策略訊號，僅供參考", state, 4, ["dart"])
         else:
             g = "出場（停利）" if p * (ref - st["entry"]) > 0 else "停損"
             M.notify(f"kd-flat-{last['t']}", f"{TAG}{SIDE[p]}單{g}",
-                     f"60分均線反轉（20MA {'<' if p > 0 else '>'} 120MA）\n▶ 模擬：下一根5分K開盤平倉（目前約 {ref:.0f}，進場 {st['entry']:.0f}）\n※ 模擬訊號",
+                     f"60分均線反轉（20MA {'<' if p > 0 else '>'} 120MA）\n▶ 模擬：下一根5分K開盤平倉（目前約 {ref:.0f}，進場 {st['entry']:.0f}）\n※ 策略訊號，僅供參考",
                      state, 4, ["dart"])
     if fresh and st["events"] and st["events"][-1][0] == last["t"] and st["events"][-1][1] in ("stop", "exit") and not st["pos"]:
         x = st["trades"][-1]
         if x["exit_t"] == last["t"] and "均線" not in x["why"]:
             M.notify(f"kd-stop-{x['exit_t']}", f"{TAG}{SIDE[x['side']]}單{'停利出場' if x['why'] == '出場' else '停損'}",
-                     f"觸及 {x['exit']:.0f}，進場 {x['entry']:.0f}，約 {x['side'] * (x['exit'] - x['entry']):+.0f} 點\n之後等下一次 KD 條件再進場\n※ 模擬訊號",
+                     f"觸及 {x['exit']:.0f}，進場 {x['entry']:.0f}，約 {x['side'] * (x['exit'] - x['entry']):+.0f} 點\n之後等下一次 KD 條件再進場\n※ 策略訊號，僅供參考",
                      state, 4, ["dart"])
     if forming and st["pos"] and st["stop"]:
         if (st["pos"] > 0 and forming["l"] <= st["stop"]) or (st["pos"] < 0 and forming["h"] >= st["stop"]):
             g = G(st["pos"], st["stop"], st["entry"])
             M.notify(f"kd-stop-{forming['t']}", f"{TAG}{SIDE[st['pos']]}單{'停利出場' if g == '停利出場價' else '停損'}",
-                     f"{g} {st['stop']:.0f}，進場 {st['entry']:.0f}，約 {st['pos'] * (st['stop'] - st['entry']):+.0f} 點\n之後等下一次 KD 條件再進場\n※ 模擬訊號",
+                     f"{g} {st['stop']:.0f}，進場 {st['entry']:.0f}，約 {st['pos'] * (st['stop'] - st['entry']):+.0f} 點\n之後等下一次 KD 條件再進場\n※ 策略訊號，僅供參考",
                      state, 4, ["dart"])
     json.dump(state, open(M.STATE_PATH, "w", encoding="utf-8"), ensure_ascii=False)
 
@@ -155,6 +155,7 @@ def main():
         forming=forming,
         k60=[dict(t=H[i]["t"], K=r1(st["K60"][i])) for i in range(s6, len(H))],
         markers=[dict(t=x, kind=k, side=sd) for x, k, sd in st["events"] if x >= F[s5]["t"]],
+        markers60=[dict(t=M.bar_start(ts(x)), kind=k, side=sd) for x, k, sd in st["events"] if x >= H[max(0, len(H) - 180)]["t"]],
         status=dict(pos=st["pos"], entry=st["entry"], entry_t=st["entry_t"], stop=r1(st["stop"]), act=st["act"], next=nxt,
                     trend=st["trend"], ma20=r1(st["ma20"]), ma120=r1(st["ma120"]), atr=r1(st["atr"]),
                     k60=r1(st["k60"]), k60p=r1(st["k60p"]), h60=st["h60"], k5=r1(st["K5"][-1]), d5=r1(st["D5"][-1]),

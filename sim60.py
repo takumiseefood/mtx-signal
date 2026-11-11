@@ -293,14 +293,15 @@ def main():
     last_end = dt.datetime.strptime(last["t"], "%Y-%m-%d %H:%M").replace(tzinfo=TZ) + dt.timedelta(hours=1)
     fresh = (t - last_end) <= dt.timedelta(hours=3)          # 資料太舊就不推播，避免誤報
     if not fresh: log.append(f"60分最新K棒 {last['t']} 過舊，本次不推播")
-    if fresh and st["want"] != st["pos"]:
+    NOTIFY = False       # 60分 20/120 純均線版已停用推播（只留 60分＋KD 版）；此程式仍負責維護 60分／5分K 資料
+    if NOTIFY and fresh and st["want"] != st["pos"]:
         act = st["want"]; ref = forming["c"] if forming else last["c"]; dist = MULT * st["atr"]
         old = (f"{SIDE[st['pos']]}單{'出場（停利）' if st['pos'] * (ref - st['entry']) > 0 else '停損'}平倉，並" if st["pos"] else "")
         notify(f"s60-act-{last['t']}-{act}", f"🧪【60分模擬】{'反手' if st['pos'] else ''}{SIDE[act]}",
                f"{last['t']} 收盤 {last['c']:.0f}｜60分 20MA {'>' if act > 0 else '<'} 120MA\n▶ 模擬：下一根K棒開盤 {old}{'買進' if act > 0 else '賣出'}（目前約 {ref:.0f}）\n"
                f"⛔ 停損＝成交價 {'−' if act > 0 else '+'} {dist:.0f} 點（約 {ref - act * dist:.0f}）\n※ 模擬訊號，僅供觀察，與日K實單訊號分開",
                state, 3, ["test_tube"])
-    if forming and st["pos"] and st["stop"]:
+    if NOTIFY and forming and st["pos"] and st["stop"]:
         if (st["pos"] > 0 and forming["l"] <= st["stop"]) or (st["pos"] < 0 and forming["h"] >= st["stop"]):
             g = G(st["pos"], st["stop"], st["entry"])
             notify(f"s60-stop-{cur}-{int(st['stop'])}", f"🧪【60分模擬】{SIDE[st['pos']]}單{'停利出場' if g == '停利出場價' else '停損'}",
