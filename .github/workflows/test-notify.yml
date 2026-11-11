@@ -1,0 +1,17 @@
+name: 測試通知
+on: workflow_dispatch
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request, datetime as dt
+          t = dt.datetime.now(dt.timezone(dt.timedelta(hours=8))).strftime("%H:%M:%S")
+          body = json.dumps(dict(topic=os.environ["NTFY_TOPIC"], title="🔔 測試通知", message=f"這是一則測試通知（{t}）。收到代表手機推播正常。",
+                                 priority=4, tags=["white_check_mark"], click="https://takumiseefood.github.io/mtx-signal/")).encode()
+          r = urllib.request.urlopen(urllib.request.Request("https://ntfy.sh/", data=body, headers={"Content-Type": "application/json", "User-Agent": "mtx-signal"}), timeout=20)
+          print(r.status, t)
+          PY
