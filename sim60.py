@@ -164,13 +164,20 @@ def fetch_minutes(market, log):
         hh, mm = int(T[:2]), int(T[2:4])
         day = base + dt.timedelta(days=shift + (1 if market == "1" and hh < 15 else 0))
         return day.replace(hour=hh, minute=mm) - dt.timedelta(minutes=1)
-    shift = -1 if stamp(ticks[-1][0]) > now() + dt.timedelta(minutes=10) else 0   # 日期若是隔日交易日就往回調
+    lastx = None
+    for row in reversed(ticks):
+        try: lastx = stamp(str(row[0]).zfill(6)); break
+        except ValueError: continue
+    if lastx is None: return {}
+    shift = -1 if lastx > now() + dt.timedelta(minutes=10) else 0   # 日期若是隔日交易日就往回調
     out = {}
     for T, o, h, l, c, *_ in ticks:
-        k = bar_start(stamp(T, shift))
+        try: x = stamp(str(T).zfill(6), shift)
+        except ValueError: continue          # 收盤後偶有格式異常的時間，略過
+        k = bar_start(x)
         if not k: continue
         o, h, l, c = float(o), float(h), float(l), float(c)
-        k5 = b5_start(stamp(T, shift))
+        k5 = b5_start(x)
         if k5: _put(LIVE5, k5, o, h, l, c)
         b = out.get(k)
         if b is None: out[k] = dict(t=k, o=o, h=h, l=l, c=c)
