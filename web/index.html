@@ -47,6 +47,7 @@
 <h2 style="font-size:15px;margin:4px 0 6px">🎯 60分方向＋KD進場<span class="sub">　策略訊號，僅供參考</span></h2>
 <div class="sub" id="kdupd" style="margin-bottom:6px">—</div>
 <button id="ntfBtn" style="margin:0 0 8px;padding:8px 12px;border-radius:10px;border:1px solid #2a3040;background:#171a21;color:#e6e8ee;font-size:13px;cursor:pointer">🔔 開啟電腦提醒</button>
+<button id="wakeBtn" style="margin:0 0 8px;padding:8px 12px;border-radius:10px;border:1px solid #2a3040;background:#171a21;color:#e6e8ee;font-size:13px;cursor:pointer">☀️ 螢幕恆亮：關</button>
 <div class="grid">
   <div class="card next" id="kdnextCard"><div class="k">下一步</div><div class="v" id="kdnext" style="font-size:16px">—</div><div class="sub" id="kdnextSub"></div></div>
   <div class="card"><div class="k">部位</div><div class="v" id="kdpos">—</div><div class="sub" id="kdposSub"></div></div>
@@ -170,6 +171,14 @@ function checkAlert(x){const st=x.status,t=x.trades[0],side={1:'做多',[-1]:'�
   else if(!st.pos&&o[0]!=='0'&&t){title=`🎯 ${side[t.side]}單${t.why.startsWith('出場')?'停利出場':'停損'} ${f0(t.exit)}`;body=`進場 ${f0(t.entry)}，${t.pts>=0?'+':''}${f0(t.pts)} 點`}
   else return;
   popup(title,body)}
+// ── 螢幕恆亮（頁面在前景時不讓螢幕熄滅）──
+const WB=$('wakeBtn');let wl=null;
+async function wakeOn(){if(!('wakeLock' in navigator)){WB.textContent='此瀏覽器不支援螢幕恆亮';return}
+  try{wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null;wakeTxt()})}catch(e){wl=null}wakeTxt()}
+function wakeTxt(){const want=lsGet('wake')==='1';WB.textContent=!('wakeLock' in navigator)?'此瀏覽器不支援螢幕恆亮':want?(wl?'☀️ 螢幕恆亮：開（點此關閉）':'☀️ 螢幕恆亮：開（回到此頁面後生效）'):'☀️ 螢幕恆亮：關'}
+WB.onclick=async()=>{if(lsGet('wake')==='1'){lsSet('wake','0');if(wl){try{await wl.release()}catch(e){}}wl=null;wakeTxt()}else{lsSet('wake','1');await wakeOn()}};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&lsGet('wake')==='1'&&!wl)wakeOn()});
+if(lsGet('wake')==='1')wakeOn();else wakeTxt();
 function header(price,ref,txt){const d=price-ref;$('px').textContent=f0(price);$('px').className='px '+(d>=0?'up':'down');
   $('chg').textContent=(d>=0?'▲ ':'▼ ')+f0(Math.abs(d))+'　'+(d/ref*100).toFixed(2)+'%';$('chg').className='chg '+(d>=0?'up':'down');$('upd').textContent=txt}
 async function load(){
