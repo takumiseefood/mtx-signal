@@ -152,13 +152,15 @@ function ntfState(){const ok=('Notification' in window)&&Notification.permission
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 function beep(){try{const a=new (window.AudioContext||window.webkitAudioContext)();[0,.25,.5].forEach(t=>{const o=a.createOscillator(),g=a.createGain();o.frequency.value=880;o.connect(g);g.connect(a.destination);g.gain.value=.15;o.start(a.currentTime+t);o.stop(a.currentTime+t+.15)})}catch(e){}}
-function popup(title,body){try{const n=new Notification(title,{body,tag:'mtx-'+Date.now(),requireInteraction:true});n.onclick=()=>{window.focus();n.close()}}catch(e){}
+function popup(title,body){try{const n=new Notification(title,{body,tag:'mtx-'+Date.now(),requireInteraction:true});n.onclick=()=>{window.focus();n.close()}}catch(e){return}   // 手機瀏覽器不支援：不響也不閃
   beep();const t0=document.title;let i=0;const iv=setInterval(()=>{document.title=(i++%2?'🔔 ':'')+title;if(i>40||!document.hidden&&i>6){clearInterval(iv);document.title=t0}},800)}
 NB.onclick=async()=>{if(!('Notification' in window))return;
   if(ntfState()){lsSet('ntf','0');ntfState();return}
   const r=await Notification.requestPermission();if(r==='granted'){lsSet('ntf','1');popup('小台訊號：電腦提醒已開啟','之後有進場、停損、停利出場訊號時，會像這樣跳出提醒（網頁需保持開著）')}ntfState()};
 ntfState();
 function checkAlert(x){const st=x.status,t=x.trades[0],side={1:'做多',[-1]:'做空'};
+  // GitHub 快取偶爾會回傳較舊的資料：只接受比上次更新的版本，避免新舊交替造成重複提醒
+  const seen=lsGet('ntfUpd')||'';if(x.updated<=seen)return;lsSet('ntfUpd',x.updated);
   const key=[st.pos,st.entry_t||'',st.act,t?t.exit_t:''].join('|'),old=lsGet('ntfKey');lsSet('ntfKey',key);
   if(!old||old===key||!ntfState())return;
   const o=old.split('|');let title,body;
@@ -175,6 +177,7 @@ async function load(){
     let j;
     try{j=await (await fetch('https://raw.githubusercontent.com/takumiseefood/mtx-signal/live/data.json?t='+Date.now(),{cache:'no-store'})).json()}
     catch(e){j=await (await fetch('data.json?t='+Date.now(),{cache:'no-store'})).json()}
+    if(G.upd&&j.updated<G.upd)return;G.upd=j.updated;   // 忽略比畫面上更舊的快取資料
     const B=j.bars||[],lv=j.live,last=B[B.length-1],prev=B[B.length-2];
     if(last){G.ref=lv?last.c:prev.c;G.updTxt='　更新 '+j.updated;
       header(lv?lv.c:last.c,G.ref,(lv?`${lv.label}・${lv.time.slice(0,2)}:${lv.time.slice(2,4)}`:`${last.d} 收盤`)+G.updTxt)}
