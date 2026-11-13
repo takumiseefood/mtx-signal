@@ -4,8 +4,8 @@
 60 分 20/120 定方向＋KD 挑進場點 模擬（推播標示【60分＋KD模擬】，與日K實單分開）
 ================================================================================
 - 方向：最近一根已收盤 60 分K 的 20MA > 120MA 偏多、< 偏空
-- 進場（偏多）：60 分 KD 的 K < 50 且上彎（準備進場），同時 5 分 KD 在 50 以下黃金交叉 → 下一根 5 分K 開盤做多
-  偏空相反：60 分 K > 50 且下彎，同時 5 分 KD 在 50 以上死亡交叉 → 做空
+- 進場（偏多）：60 分 KD 的 K < 30 且上彎（準備進場），同時 5 分 KD 在 50 以下黃金交叉 → 下一根 5 分K 開盤做多
+  偏空相反：60 分 K > 70 且下彎，同時 5 分 KD 在 50 以上死亡交叉 → 做空
 - 出場：2 倍 ATR(60 分) 移動停損，或 60 分均線反轉（下一根 5 分K 開盤平倉）
 - 停損後不立即再進場，等下一次 KD 條件成立
 """
@@ -19,6 +19,7 @@ import sim60 as M
 
 SIM_START = "2026-11-11 12:00"
 MULT = 2.0
+K60_L, K60_S = 30, 70   # 60分K 門檻：做多要低於 30 且上彎；做空要高於 70 且下彎
 ENTRY = "both"        # 進場時機："both"＝60分KD<50上彎＋5分KD<50黃金交叉（現行）；"5m50"＝只看5分；"60kd"＝60分KD＋5分交叉（不限50）
 ADJ_MIN = 50          # 防守價變動達 50 點才記一筆調整紀錄
 SIDE = {1: "做多", -1: "做空", 0: "空手"}
@@ -85,8 +86,8 @@ def replay(F, H):
                 if tr > 0 and gx and K5[i] < 50: act = 1
                 if tr < 0 and dx and K5[i] > 50: act = -1
             elif ENTRY == "both":
-                if tr > 0 and K60[c] < 50 and K60[c] > K60[c - 1] and gx and K5[i] < 50: act = 1
-                if tr < 0 and K60[c] > 50 and K60[c] < K60[c - 1] and dx and K5[i] > 50: act = -1
+                if tr > 0 and K60[c] < K60_L and K60[c] > K60[c - 1] and gx and K5[i] < 50: act = 1
+                if tr < 0 and K60[c] > K60_S and K60[c] < K60[c - 1] and dx and K5[i] > 50: act = -1
             else:
                 if tr > 0 and K60[c] < 50 and K60[c] > K60[c - 1] and gx: act = 1
                 if tr < 0 and K60[c] > 50 and K60[c] < K60[c - 1] and dx: act = -1
@@ -116,12 +117,12 @@ def main():
     state = json.load(open(M.STATE_PATH)) if os.path.exists(M.STATE_PATH) else {"sent": []}
     G = lambda p, price, entry: "停利出場價" if p * (price - entry) > 0 else "停損價"
     # 60分K 條件剛成立（上一根還不成立）→「準備進場」提醒
-    def ok60(tr, k, kp): return (tr > 0 and k < 50 and k > kp) or (tr < 0 and k > 50 and k < kp)
+    def ok60(tr, k, kp): return (tr > 0 and k < K60_L and k > kp) or (tr < 0 and k > K60_S and k < kp)
     tr = st["trend"]
     if fresh and not st["pos"] and tr and ok60(tr, st["k60"], st["k60p"]) and not ok60(tr, st["k60p"], st["k60pp"]):
         L = tr > 0
         M.notify(f"kd-ready-{st['h60']}", f"🟡【60分＋KD】準備{SIDE[tr]}：60分K條件成立",
-                 f"{st['h60'][5:]} 這根60分K收盤：K {st['k60']:.0f}（{'<50 上彎' if L else '>50 下彎'}），60分均線{'偏多' if L else '偏空'}\n"
+                 f"{st['h60'][5:]} 這根60分K收盤：K {st['k60']:.0f}（{'<30 上彎' if L else '>70 下彎'}），60分均線{'偏多' if L else '偏空'}\n"
                  f"接下來等 5分KD 在50以{'下黃金' if L else '上死亡'}交叉才進場（目前 5分K {st['K5'][-1]:.0f}、D {st['D5'][-1]:.0f}）\n"
                  f"※ 還不是進場訊號；條件可能在下一根60分K失效", state, 3, ["hourglass_flowing_sand"])
     if fresh and st["act"] != st["pos"]:
@@ -130,7 +131,7 @@ def main():
             dist = MULT * st["atr"]
             M.notify(f"kd-act-{last['t']}-{a}", f"{TAG}{SIDE[a]}進場",
                      f"{last['t'][5:]} 5分K收盤 {ref:.0f}\n方向：60分 20MA {'>' if a > 0 else '<'} 120MA\n"
-                     f"時機：60分K {st['k60']:.0f}（{'<50 上彎' if a > 0 else '>50 下彎'}）＋5分KD 在50以{'下黃金' if a > 0 else '上死亡'}交叉（K {st['K5'][-1]:.0f}）\n"
+                     f"時機：60分K {st['k60']:.0f}（{'<30 上彎' if a > 0 else '>70 下彎'}）＋5分KD 在50以{'下黃金' if a > 0 else '上死亡'}交叉（K {st['K5'][-1]:.0f}）\n"
                      f"▶ 模擬：下一根5分K開盤{'買進' if a > 0 else '賣出'}\n⛔ 停損＝成交價 {'−' if a > 0 else '+'} {dist:.0f} 點（約 {ref - a * dist:.0f}）\n"
                      f"※ 策略訊號，僅供參考", state, 4, ["dart"])
         else:
@@ -164,9 +165,9 @@ def main():
     elif st["pos"]:
         nxt = f"續抱{SIDE[st['pos']]}"
     elif st["trend"] > 0:
-        nxt = "等做多時機：60分K<50上彎＋5分KD在50以下黃金交叉"
+        nxt = "等做多時機：60分K<30上彎＋5分KD在50以下黃金交叉"
     elif st["trend"] < 0:
-        nxt = "等做空時機：60分K>50下彎＋5分KD在50以上死亡交叉"
+        nxt = "等做空時機：60分K>70下彎＋5分KD在50以上死亡交叉"
     else:
         nxt = "觀望"
     page_path = os.path.join(M.SITE, "data.json")

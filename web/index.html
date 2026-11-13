@@ -66,7 +66,7 @@
 <div class="card"><div class="k" style="margin-bottom:4px">交易紀錄（1 口點數；停損＝虧損離場，出場＝停利離場；最上方為未出場部位與防守價調整，「鎖」＝觸價出場可保住的點數）</div>
 <div style="overflow-x:auto"><table><thead><tr><th>進場</th><th>出場</th><th>方向</th><th>進→出</th><th>原因</th><th>點數</th></tr></thead><tbody id="kdtr"></tbody></table></div></div>
 <div class="err" id="err"></div>
-<p class="rules">策略：以 60分K 的 20MA／120MA 決定方向（20MA 在上偏多、在下偏空）。偏多時，60分 KD 的 K 值低於 50 且上彎（準備進場），同時 5分 KD 在 50 以下黃金交叉，下一根 5分K 開盤做多；偏空時相反（60分 K 高於 50 且下彎＋5分 KD 在 50 以上死亡交叉做空）。進場後以最有利價格 ∓ 2×ATR(60分) 設防守價：仍在虧損區稱「停損價」，越過進場價後稱「停利出場價」；60分均線反轉也會平倉。停損後等下一次 KD 條件成立才再進場。資料來源：臺灣期貨交易所（含夜盤），圖表每 5 分鐘更新，報價每 10 秒更新。僅供參考，非投資建議。</p>
+<p class="rules">策略：以 60分K 的 20MA／120MA 決定方向（20MA 在上偏多、在下偏空）。偏多時，60分 KD 的 K 值低於 30 且上彎（準備進場），同時 5分 KD 在 50 以下黃金交叉，下一根 5分K 開盤做多；偏空時相反（60分 K 高於 70 且下彎＋5分 KD 在 50 以上死亡交叉做空）。進場後以最有利價格 ∓ 2×ATR(60分) 設防守價：仍在虧損區稱「停損價」，越過進場價後稱「停利出場價」；60分均線反轉也會平倉。停損後等下一次 KD 條件成立才再進場。資料來源：臺灣期貨交易所（含夜盤），圖表每 5 分鐘更新，報價每 10 秒更新。僅供參考，非投資建議。</p>
 
 <script src="lwc.js"></script>
 <script>
@@ -133,10 +133,10 @@ function drawKD(x){if(!x||!x.bars5){$('kdupd').textContent='資料準備中…';
   $('kdstop').textContent=st.stop?f0(st.stop):'—';$('kdstopSub').textContent=st.stop?`距目前 ${f0(Math.abs(price-st.stop))} 點`:'目前無部位';
   $('kdma').innerHTML=`<span class="${st.trend>0?'up':st.trend<0?'down':''}">${st.trend>0?'偏多':st.trend<0?'偏空':'—'}</span>`;
   $('kdmaSub').textContent=`${f0(st.ma20)} ／ ${f0(st.ma120)}`;
-  const turn=st.k60>st.k60p?'上彎':'下彎',ok60=st.trend>0?(st.k60<50&&st.k60>st.k60p):st.trend<0?(st.k60>50&&st.k60<st.k60p):false;
+  const turn=st.k60>st.k60p?'上彎':'下彎',ok60=st.trend>0?(st.k60<30&&st.k60>st.k60p):st.trend<0?(st.k60>70&&st.k60<st.k60p):false;
   $('kdkd').innerHTML=`${f1(st.k60)}<span class="sub"> ${turn}</span> ／ ${f1(st.k5)}、${f1(st.d5)}`;
   const ok5=st.trend>0?st.k5<50:st.trend<0?st.k5>50:false,L=st.trend>=0;
-  $('kdkdSub').textContent=st.trend?`60分K${L?'<50上彎':'>50下彎'} ${ok60?'✅':'✖'}｜5分K${L?'<50':'>50'} ${ok5?'✅':'✖'}，都成立後等5分${L?'黃金':'死亡'}交叉`:'';
+  $('kdkdSub').textContent=st.trend?`60分K${L?'<30上彎':'>70下彎'} ${ok60?'✅':'✖'}｜5分K${L?'<50':'>50'} ${ok5?'✅':'✖'}，都成立後等5分${L?'黃金':'死亡'}交叉`:'';
   $('kdk5').textContent=f1(st.k5);$('kdd5').textContent=f1(st.d5);
   $('kdpts').innerHTML=`<span class="${st.sim_pts>=0?'up':'down'}">${st.sim_pts>=0?'+':''}${f0(st.sim_pts)} 點</span>`;
   $('kdptsSub').textContent=`${st.sim_trades} 筆｜歷史重播 ${st.hist_from.slice(5,10)} 起 ${st.hist_pts>=0?'+':''}${f0(st.hist_pts)} 點／${st.hist_trades} 筆`;
