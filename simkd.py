@@ -94,7 +94,7 @@ def replay(F, H):
     atr = ind["atr"][c]
     return dict(pos=pos, entry=e if pos else None, entry_t=ent if pos else None,
                 stop=(ext - pos * MULT * atr) if pos else None, act=act, trend=tr, atr=atr,
-                k60=K60[c], k60p=K60[c - 1], h60=H[c]["t"], ma20=ind["ma20"][c], ma120=ind["ma120"][c],
+                k60=K60[c], k60p=K60[c - 1], k60pp=K60[c - 2], h60=H[c]["t"], ma20=ind["ma20"][c], ma120=ind["ma120"][c],
                 adj=adj if pos else [], K5=K5, D5=D5, K60=K60, ind=ind, trades=trades, events=ev)
 
 
@@ -115,6 +115,15 @@ def main():
     fresh = t - (ts(last["t"]) + dt.timedelta(minutes=5)) <= dt.timedelta(minutes=15)
     state = json.load(open(M.STATE_PATH)) if os.path.exists(M.STATE_PATH) else {"sent": []}
     G = lambda p, price, entry: "停利出場價" if p * (price - entry) > 0 else "停損價"
+    # 60分K 條件剛成立（上一根還不成立）→「準備進場」提醒
+    def ok60(tr, k, kp): return (tr > 0 and k < 50 and k > kp) or (tr < 0 and k > 50 and k < kp)
+    tr = st["trend"]
+    if fresh and not st["pos"] and tr and ok60(tr, st["k60"], st["k60p"]) and not ok60(tr, st["k60p"], st["k60pp"]):
+        L = tr > 0
+        M.notify(f"kd-ready-{st['h60']}", f"🟡【60分＋KD】準備{SIDE[tr]}：60分K條件成立",
+                 f"{st['h60'][5:]} 這根60分K收盤：K {st['k60']:.0f}（{'<50 上彎' if L else '>50 下彎'}），60分均線{'偏多' if L else '偏空'}\n"
+                 f"接下來等 5分KD 在50以{'下黃金' if L else '上死亡'}交叉才進場（目前 5分K {st['K5'][-1]:.0f}、D {st['D5'][-1]:.0f}）\n"
+                 f"※ 還不是進場訊號；條件可能在下一根60分K失效", state, 3, ["hourglass_flowing_sand"])
     if fresh and st["act"] != st["pos"]:
         a, p = st["act"], st["pos"]; ref = last["c"]
         if a:
