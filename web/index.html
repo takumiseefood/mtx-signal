@@ -49,7 +49,10 @@
 <button id="ntfBtn" style="margin:0 0 8px;padding:8px 12px;border-radius:10px;border:1px solid #2a3040;background:#171a21;color:#e6e8ee;font-size:13px;cursor:pointer">🔔 開啟電腦提醒</button>
 <button id="wakeBtn" style="margin:0 0 8px;padding:8px 12px;border-radius:10px;border:1px solid #2a3040;background:#171a21;color:#e6e8ee;font-size:13px;cursor:pointer">☀️ 螢幕恆亮：關</button>
 <div class="grid">
-  <div class="card next" id="kdnextCard"><div class="k">下一步</div><div class="v" id="kdnext" style="font-size:16px">—</div><div class="sub" id="kdnextSub"></div></div>
+  <div class="card next" id="kdnextCard" style="display:flex;flex-wrap:wrap;gap:10px 18px;align-items:flex-start">
+    <div style="flex:1 1 150px;min-width:0"><div class="k">下一步</div><div class="v" id="kdnext" style="font-size:16px">—</div><div class="sub" id="kdnextSub"></div></div>
+    <div id="macro" style="flex:1 1 190px;font-size:12px;line-height:1.75;border-left:1px solid #262b36;padding-left:12px"></div>
+  </div>
   <div class="card"><div class="k">部位</div><div class="v" id="kdpos">—</div><div class="sub" id="kdposSub"></div></div>
   <div class="card"><div class="k" id="kdstopK">防守價</div><div class="v" id="kdstop">—</div><div class="sub" id="kdstopSub"></div></div>
   <div class="card"><div class="k">方向：60分 20MA／120MA</div><div class="v" id="kdma">—</div><div class="sub" id="kdmaSub"></div></div>
@@ -66,7 +69,7 @@
 <div class="card"><div class="k" style="margin-bottom:4px">交易紀錄（1 口點數；停損＝虧損離場，出場＝停利離場；最上方為未出場部位與防守價調整，「鎖」＝觸價出場可保住的點數）</div>
 <div style="overflow-x:auto"><table><thead><tr><th>進場</th><th>出場</th><th>方向</th><th>進→出</th><th>原因</th><th>點數</th></tr></thead><tbody id="kdtr"></tbody></table></div></div>
 <div class="err" id="err"></div>
-<p class="rules">策略：以 60分K 的 20MA／120MA 決定方向（20MA 在上偏多、在下偏空）。偏多時，60分 KD 的 K 值低於 30 且上彎、60分 MACD 綠柱短於前一根（準備進場），同時 5分 KD 在 50 以下黃金交叉，下一根 5分K 開盤做多；偏空時相反（60分 K 高於 70 且下彎、MACD 紅柱短於前一根＋5分 KD 在 50 以上死亡交叉做空）。進場後以最有利價格 ∓ 2×ATR(60分) 設防守價：仍在虧損區稱「停損價」，越過進場價後稱「停利出場價」；60分均線反轉也會平倉。停損後等下一次 KD 條件成立才再進場。資料來源：臺灣期貨交易所（含夜盤），圖表每 5 分鐘更新，報價每 10 秒更新。僅供參考，非投資建議。</p>
+<p class="rules">策略：以 60分K 的 20MA／120MA 決定方向（20MA 在上偏多、在下偏空）。偏多時，60分 KD 的 K 值低於 30 且上彎、60分 MACD 綠柱短於前一根（準備進場），同時 5分 KD 在 50 以下黃金交叉，下一根 5分K 開盤做多；偏空時相反（60分 K 高於 70 且下彎、MACD 紅柱短於前一根＋5分 KD 在 50 以上死亡交叉做空）。進場後以最有利價格 ∓ 2×ATR(60分) 設防守價：仍在虧損區稱「停損價」，越過進場價後稱「停利出場價」；60分均線反轉也會平倉。停損後等下一次 KD 條件成立才再進場。外資台指空單＝期交所「外資及陸資」臺股期貨（大台）空方未平倉口數，約 15:00 後更新；融資餘額為上市融資金額，維持率為估算值（融資股票市值 ÷ 融資金額），約 21:00 後更新；匯率為鉅亨網即時報價。資料來源：臺灣期貨交易所（含夜盤），圖表每 5 分鐘更新，報價每 10 秒更新。僅供參考，非投資建議。</p>
 
 <script src="lwc.js"></script>
 <script>
@@ -180,6 +183,17 @@ function wakeTxt(){const want=lsGet('wake')==='1';WB.textContent=!('wakeLock' in
 WB.onclick=async()=>{if(lsGet('wake')==='1'){lsSet('wake','0');if(wl){try{await wl.release()}catch(e){}}wl=null;wakeTxt()}else{lsSet('wake','1');await wakeOn()}};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&lsGet('wake')==='1'&&!wl)wakeOn()});
 if(lsGet('wake')==='1')wakeOn();else wakeTxt();
+// ── 籌碼與匯率（放在「下一步」卡片右側）──
+function drawMacro(m){if(m)G.macro=m;m=G.macro;if(!m)return;
+  const ud=(v,unit,d=0)=>v==null?'':` <span class="${v>0?'up':v<0?'down':''}">${v>0?'▲':v<0?'▼':'─'}${Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d})}${unit}</span>`;
+  const md=s=>s?s.slice(5):'';let h='';
+  if(m.fut)h+=`<div><span class="sub">外資台指空單</span> <b>${f0(m.fut.short)}</b> 口${ud(m.fut.short_chg,'')}<span class="sub">　淨${m.fut.net<0?'空':'多'} ${f0(Math.abs(m.fut.net))}　${md(m.fut.date)}</span></div>`;
+  if(m.margin)h+=`<div><span class="sub">融資餘額</span> <b>${m.margin.bal.toLocaleString('en-US',{minimumFractionDigits:1})}</b> 億${ud(m.margin.chg,'億',1)}<span class="sub">　維持率 </span>${m.margin.ratio!=null?'<b>'+m.margin.ratio.toFixed(1)+'%</b>':'—'}<span class="sub">　${md(m.margin.date)}</span></div>`;
+  const fx=G.fx||m.fx;if(fx)h+=`<div><span class="sub">美元/台幣</span> <b>${(+fx.px).toFixed(3)}</b>${ud(+fx.chg,'',3)}<span class="sub">　${fx.time||''}</span></div>`;
+  $('macro').innerHTML=h}
+async function fxTick(){try{const d=(await (await fetch('https://ws.api.cnyes.com/ws/api/v1/quote/quotes/FX:USDTWD:FOREX',{cache:'no-store'})).json()).data[0];
+  const t=new Date(d['200007']*1000+8*3600e3).toISOString();G.fx={px:d['6'],chg:d['11'],time:t.slice(5,10).replace('-','/')+' '+t.slice(11,16)};drawMacro()}catch(e){}}
+setInterval(fxTick,60000);setTimeout(fxTick,2500);
 function header(price,ref,txt){const d=price-ref;$('px').textContent=f0(price);$('px').className='px '+(d>=0?'up':'down');
   $('chg').textContent=(d>=0?'▲ ':'▼ ')+f0(Math.abs(d))+'　'+(d/ref*100).toFixed(2)+'%';$('chg').className='chg '+(d>=0?'up':'down');$('upd').textContent=txt}
 async function load(){
@@ -191,7 +205,7 @@ async function load(){
     const B=j.bars||[],lv=j.live,last=B[B.length-1],prev=B[B.length-2];
     if(last){G.ref=lv?last.c:prev.c;G.updTxt='　更新 '+j.updated;
       header(lv?lv.c:last.c,G.ref,(lv?`${lv.label}・${lv.time.slice(0,2)}:${lv.time.slice(2,4)}`:`${last.d} 收盤`)+G.updTxt)}
-    drawKD(j.simkd);draw60(j.sim60,j.simkd);if(j.simkd&&j.simkd.status)checkAlert(j.simkd);
+    drawKD(j.simkd);draw60(j.sim60,j.simkd);drawMacro(j.macro);if(j.simkd&&j.simkd.status)checkAlert(j.simkd);
     if(G.q&&Date.now()-G.qAt<30000)applyQuote(G.q);
     const bad=[...(j.log||[]),...((j.sim60||{}).log||[])].filter(x=>x.includes('失敗'));$('err').textContent=bad.join('；');
   }catch(e){$('err').textContent='資料載入失敗：'+e.message}
