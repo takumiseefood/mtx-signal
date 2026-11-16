@@ -1,0 +1,16 @@
+name: probe
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/130 Safari/537.36'
+          echo "== taifex futContracts"; curl -s -A "$UA" -X POST https://www.taifex.com.tw/cht/3/futContractsDateDown -d 'queryStartDate=2026/11/10&queryEndDate=2026/11/16&commodityId=TXF' | iconv -f big5 -t utf8 | head -8
+          echo "== twse MS"; curl -s -A "$UA" 'https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date=20261113&selectType=MS&response=json' | head -c 1500; echo
+          echo "== twse ALL"; curl -s -A "$UA" 'https://www.twse.com.tw/rwd/zh/marginTrading/MI_MARGN?date=20261113&selectType=ALL&response=json' | python3 -c "
+          import json,sys;d=json.load(sys.stdin);print(d.get('stat'),[ (t.get('title'),t.get('fields'),len(t.get('data',[])),t.get('data',[[]])[0]) for t in d.get('tables',[])])" | head -c 2500; echo
+          echo "== twse close"; curl -s -A "$UA" 'https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX?date=20261113&type=ALLBUT0999&response=json' | python3 -c "
+          import json,sys;d=json.load(sys.stdin);print(d.get('stat'));[print(i,t.get('title'),t.get('fields'),len(t.get('data',[])),(t.get('data') or [[]])[0]) for i,t in enumerate(d.get('tables',[]))]" | head -c 3000; echo
+          echo "== bot"; curl -s -A "$UA" https://rate.bot.com.tw/xrt/flcsv/0/day | head -3
+          echo "== cnyes fx"; for s in FX:USDTWD:FOREX GF:USDTWD:FOREX; do curl -s "https://ws.api.cnyes.com/ws/api/v1/quote/quotes/$s" | head -c 500; echo; done
