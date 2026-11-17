@@ -1,4 +1,4 @@
-"""兩次完整計算之間，每 10 秒抓一次期交所即時價。
+"""兩次完整計算之間，每 5 秒抓一次期交所即時價。
 價格觸及日K或60分模擬的停損／停利出場價時立刻結束，讓 loop.sh 馬上重算並推播。
 用法：python watch.py <最多等待秒數>
 """
@@ -12,7 +12,7 @@ from sim60 import fetch_quote, TZ
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DONE = "/tmp/watch_done.json"     # 已觸發過的價位，避免同一價位一直重算
-INTERVAL = 10
+INTERVAL = 5
 
 
 def levels():
