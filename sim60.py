@@ -28,6 +28,40 @@ SIDE = {1: "做多", -1: "做空", 0: "空手"}
 def now(): return dt.datetime.now(TZ)
 
 
+# ───────────── 合約月份：結算前 7 天就換到下個月（例：11 月合約 11/18 結算，11/11 起改用 12 月） ─────────────
+ROLL_DAYS = 7
+CONTRACT_FILE = os.path.join(ROOT, "data", "contract.txt")
+MCODE = "ABCDEFGHIJKL"
+
+
+def expiry(y, m):
+    """月合約最後交易日＝該月第三個星期三（未考慮假日順延）"""
+    d = dt.date(y, m, 1); d += dt.timedelta(days=(2 - d.weekday()) % 7)
+    return d + dt.timedelta(days=14)
+
+
+def target_contract(day=None):
+    """回傳 (yyyymm, 行情代碼前綴)，例如 ("202612", "MXFL6")"""
+    day = day or now().date(); y, m = day.year, day.month
+    while (expiry(y, m) - day).days < ROLL_DAYS:
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+    return f"{y}{m:02d}", f"MXF{MCODE[m - 1]}{y % 10}"
+
+
+def contract_label(ym=None):
+    ym = ym or target_contract()[0]
+    return f"小台{int(ym[4:])}月全"
+
+
+def pick_quote(quotes, code=None):
+    """從期交所報價列表挑出目標月份的小台；找不到才退回成交量最大的月合約"""
+    code = code or target_contract()[1]
+    mon = [q for q in quotes if q.get("SymbolID", "").startswith("MXF") and not q.get("SymbolID", "").startswith("MXF-") and q.get("CLastPrice")]
+    for q in mon:
+        if q["SymbolID"].startswith(code + "-"): return q
+    return max(mon, key=lambda q: float(q.get("CTotalVolume") or 0)) if mon else None
+
+
 def bar_start(d: dt.datetime):
     """回傳這個時間所屬 60 分 K 的開始時間字串；非交易時段回傳 None"""
     hm = d.hour * 100 + d.minute
@@ -90,7 +124,9 @@ def fetch_tick_day(date: dt.date):
         except ValueError: continue
         ticks.setdefault(a[2], []).append((a[0], a[3].zfill(6), px)); vol[a[2]] = vol.get(a[2], 0) + q
     if not vol: return None
-    m = max(vol, key=vol.get); bars = {}
+    m = target_contract()[0]
+    if m not in ticks: return {}           # 這天目標合約沒有成交
+    bars = {}
     for d8, t6, px in ticks[m]:
         x = dt.datetime.strptime(d8 + t6, "%Y%m%d%H%M%S").replace(tzinfo=TZ); k = bar_start(x)
         k5 = b5_start(x)
@@ -139,13 +175,7 @@ def fetch_quote(market):
     req = urllib.request.Request("https://mis.taifex.com.tw/futures/api/getQuoteList", data=body,
                                  headers={**UA, "Content-Type": "application/json"})
     j = json.loads(urllib.request.urlopen(req, timeout=20).read().decode())
-    best = None
-    for q in (j.get("RtData") or {}).get("QuoteList") or []:
-        sid = q.get("SymbolID", "")
-        if sid.startswith("MXF") and not sid.startswith("MXF-") and q.get("CLastPrice"):
-            v = float(q.get("CTotalVolume") or 0)
-            if best is None or v > best[0]: best = (v, q)
-    return best[1] if best else None
+    return pick_quote((j.get("RtData") or {}).get("QuoteList") or [])
 
 
 def fetch_minutes(market, log):
@@ -280,8 +310,22 @@ def notify(key, title, msg, state, prio=3, tags=None):
     print("推播:", title, "|", msg); state["sent"] = (state["sent"] + [key])[-300:]
 
 
+def roll_check(log):
+    """目標合約變了 → 清掉舊合約的 60分／5分K，下面會用逐筆檔重抓新合約近 45 天"""
+    ym = target_contract()[0]
+    old = open(CONTRACT_FILE).read().strip() if os.path.exists(CONTRACT_FILE) else ""
+    if old == ym: return
+    for f in (CSV60, CSV5, FILES):
+        if os.path.exists(f): os.remove(f)
+    if os.path.exists(LIVE):
+        st = json.load(open(LIVE)); st["bars"] = {}; st["bars5"] = {}; json.dump(st, open(LIVE, "w"))
+    os.makedirs(os.path.dirname(CONTRACT_FILE), exist_ok=True); open(CONTRACT_FILE, "w").write(ym + "\n")
+    log.append(f"換月：{old or '（無）'} → {ym}，重建 K 棒")
+
+
 def main():
     log = []; t = now()
+    roll_check(log)
     bars = load60()
     try: bars = update_ticks(bars, log)
     except Exception as ex: log.append(f"60分逐筆檔失敗：{ex}")

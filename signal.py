@@ -81,6 +81,12 @@ def fetch_taifex_daily(days=20):
     return out
 
 
+def MCODE_ORDER(sid):
+    """MXFL6-F → (6, 12)：依年、月排序"""
+    c = sid[3:5]
+    return (int(c[1]) if c[1:].isdigit() else 9, "ABCDEFGHIJKL".find(c[0]))
+
+
 def fetch_live():
     """期交所行情資訊網：回傳近月小台 日盤/夜盤 即時報價"""
     res = {}
@@ -90,18 +96,16 @@ def fetch_live():
         req = urllib.request.Request("https://mis.taifex.com.tw/futures/api/getQuoteList", data=body,
                                      headers={**UA, "Content-Type": "application/json"})
         j = json.loads(urllib.request.urlopen(req, timeout=20).read().decode("utf-8"))
-        best = None
-        for q in (j.get("RtData") or {}).get("QuoteList") or []:
-            sid = q.get("SymbolID", "")
-            if not sid.startswith("MXF") or sid.startswith("MXF-") or not q.get("CLastPrice"):
-                continue
-            vol = float(q.get("CTotalVolume") or 0)
-            if best is None or vol > best[0]:
-                best = (vol, q)
-        if best:
-            q = best[1]
-            res[name] = dict(symbol=q["DispCName"], o=float(q["COpenPrice"]), h=float(q["CHighPrice"]),
-                             l=float(q["CLowPrice"]), c=float(q["CLastPrice"]), date=q["CDate"], time=q["CTime"])
+        import sim60
+        L = (j.get("RtData") or {}).get("QuoteList") or []
+        q = sim60.pick_quote(L)
+        if q:
+            mon = sorted([x for x in L if x.get("SymbolID", "").startswith("MXF") and not x["SymbolID"].startswith("MXF-")
+                          and x.get("CLastPrice")], key=lambda x: (MCODE_ORDER(x["SymbolID"])))
+            near = mon[0] if mon else q     # 最近月（鉅亨網報價追蹤的合約）
+            res[name] = dict(symbol=q["DispCName"], label=sim60.contract_label(), o=float(q["COpenPrice"]), h=float(q["CHighPrice"]),
+                             l=float(q["CLowPrice"]), c=float(q["CLastPrice"]), ref=float(q.get("CRefPrice") or 0) or None,
+                             basis=round(float(q["CLastPrice"]) - float(near["CLastPrice"]), 1), date=q["CDate"], time=q["CTime"])
     return res
 
 

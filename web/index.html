@@ -35,7 +35,7 @@
 <body>
 <header>
   <div>
-    <h1>小台指期近月</h1>
+    <h1 id="ttl">小台12月全</h1>
     <div class="sub" id="upd">載入中…</div>
   </div>
   <div style="text-align:right">
@@ -69,7 +69,7 @@
 <div class="card"><div class="k" style="margin-bottom:4px">交易紀錄（1 口點數；停損＝虧損離場，出場＝停利離場；最上方為未出場部位與防守價調整，「鎖」＝觸價出場可保住的點數）</div>
 <div style="overflow-x:auto"><table><thead><tr><th>進場</th><th>出場</th><th>方向</th><th>進→出</th><th>原因</th><th>點數</th></tr></thead><tbody id="kdtr"></tbody></table></div></div>
 <div class="err" id="err"></div>
-<p class="rules">策略：以 60分K 的 20MA／120MA 決定方向（20MA 在上偏多、在下偏空）。偏多時，60分 KD 的 K 值低於 30 且上彎、60分 MACD 綠柱短於前一根（準備進場），同時 5分 KD 在 50 以下黃金交叉，下一根 5分K 開盤做多；偏空時相反（60分 K 高於 70 且下彎、MACD 紅柱短於前一根＋5分 KD 在 50 以上死亡交叉做空）。進場後以最有利價格 ∓ 2×ATR(60分) 設防守價：仍在虧損區稱「停損價」，越過進場價後稱「停利出場價」；60分均線反轉也會平倉。停損後等下一次 KD 條件成立才再進場。外資台指空單＝期交所「外資及陸資」臺股期貨（大台）空方未平倉口數，約 15:00 後更新；融資餘額為上市融資金額，維持率為估算值（融資股票市值 ÷ 融資金額），約 21:00 後更新；匯率為鉅亨網即時報價。資料來源：臺灣期貨交易所（含夜盤），圖表每 5 分鐘更新，報價每 10 秒更新。僅供參考，非投資建議。</p>
+<p class="rules">策略：以 60分K 的 20MA／120MA 決定方向（20MA 在上偏多、在下偏空）。偏多時，60分 KD 的 K 值低於 30 且上彎、60分 MACD 綠柱短於前一根（準備進場），同時 5分 KD 在 50 以下黃金交叉，下一根 5分K 開盤做多；偏空時相反（60分 K 高於 70 且下彎、MACD 紅柱短於前一根＋5分 KD 在 50 以上死亡交叉做空）。進場後以最有利價格 ∓ 2×ATR(60分) 設防守價：仍在虧損區稱「停損價」，越過進場價後稱「停利出場價」；60分均線反轉也會平倉。停損後等下一次 KD 條件成立才再進場。外資台指空單＝期交所「外資及陸資」臺股期貨（大台）空方未平倉口數，約 15:00 後更新；融資餘額為上市融資金額，維持率為估算值（融資股票市值 ÷ 融資金額），約 21:00 後更新；匯率為鉅亨網即時報價。合約：小台指期「目標月份」含夜盤（結算日前 7 天自動換到下個月，例如 11 月合約 11/18 結算，11/11 起改用 12 月）；盤中 10 秒報價為鉅亨網最近月價格加上與目標月份的價差，約略值。資料來源：臺灣期貨交易所（含夜盤），圖表每 5 分鐘更新，報價每 10 秒更新。僅供參考，非投資建議。</p>
 
 <script src="lwc.js"></script>
 <script>
@@ -202,9 +202,11 @@ async function load(){
     try{j=await (await fetch('https://raw.githubusercontent.com/takumiseefood/mtx-signal/live/data.json?t='+Date.now(),{cache:'no-store'})).json()}
     catch(e){j=await (await fetch('data.json?t='+Date.now(),{cache:'no-store'})).json()}
     if(G.upd&&j.updated<G.upd)return;G.upd=j.updated;   // 忽略比畫面上更舊的快取資料
-    const B=j.bars||[],lv=j.live,last=B[B.length-1],prev=B[B.length-2];
-    if(last){G.ref=lv?last.c:prev.c;G.updTxt='　更新 '+j.updated;
-      header(lv?lv.c:last.c,G.ref,(lv?`${lv.label}・${lv.time.slice(0,2)}:${lv.time.slice(2,4)}`:`${last.d} 收盤`)+G.updTxt)}
+    // 目標月份合約（小台X月全）：取最新的日盤／夜盤報價，漲跌以期交所參考價計
+    const LQ=j.live_quotes||{},qs=['day','night'].map(k=>LQ[k]&&{...LQ[k],k}).filter(Boolean).sort((a,b)=>(a.date+a.time.padStart(6,'0'))<(b.date+b.time.padStart(6,'0'))?1:-1),cq=qs[0];
+    if(cq){if(cq.label)$('ttl').textContent=cq.label;document.title=cq.label||document.title;
+      G.ref=cq.ref||cq.o;G.basis=cq.basis||0;G.updTxt='　更新 '+j.updated;
+      header(cq.c,G.ref,`${cq.k==='day'?'日盤':'夜盤'}・${cq.time.padStart(6,'0').slice(0,2)}:${cq.time.padStart(6,'0').slice(2,4)}`+G.updTxt)}
     drawKD(j.simkd);draw60(j.sim60,j.simkd);drawMacro(j.macro);if(j.simkd&&j.simkd.status)checkAlert(j.simkd);
     if(G.q&&Date.now()-G.qAt<30000)applyQuote(G.q);
     const bad=[...(j.log||[]),...((j.sim60||{}).log||[])].filter(x=>x.includes('失敗'));$('err').textContent=bad.join('；');
@@ -236,7 +238,7 @@ async function tick(){const m=sessionNow();if(!m||document.hidden)return;
   try{const d=(await (await fetch(QURL,{cache:'no-store'})).json()).data[0];
     const tt=new Date(d['200007']*1000+8*3600e3).toISOString().slice(11,19).replace(/:/g,'');
     if(Date.now()/1000-d['200007']>600)return;   // 報價超過 10 分鐘沒動＝非交易中，不覆蓋
-    const q={m,c:+d['6'],time:tt};if(q.c){G.q=q;G.qAt=Date.now();applyQuote(q)}}catch(e){}}
+    const q={m,c:+d['6']+(G.basis||0),time:tt};if(q.c){G.q=q;G.qAt=Date.now();applyQuote(q)}}catch(e){}}
 setInterval(tick,10000);setTimeout(tick,1500);document.addEventListener('visibilitychange',()=>{if(!document.hidden){load();tick()}});
 load();setInterval(load,60000);
 </script>
