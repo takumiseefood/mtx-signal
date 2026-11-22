@@ -33,4 +33,7 @@ jobs:
         run: bash loop.sh
       - name: 啟動下一輪
         if: always()
-        run: gh workflow run signal.yml --ref main -R "$REPO" || echo "下一輪啟動失敗，交給備援排程"
+        run: |
+          # 已經有排隊中的一輪（例如備援排程）就不再另開，避免互相取消
+          q=$(gh run list -R "$REPO" -w signal.yml -L 10 --json status -q '[.[]|select(.status=="queued" or .status=="pending" or .status=="waiting" or .status=="requested")]|length')
+          if [ "${q:-0}" -gt 0 ]; then echo "已有排隊中的一輪，不另開"; else gh workflow run signal.yml --ref main -R "$REPO" || echo "下一輪啟動失敗，交給備援排程"; fi

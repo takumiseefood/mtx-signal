@@ -37,5 +37,7 @@ while [ $SECONDS -lt $END ]; do
   publish_live
   if trading_hours; then step=300; else step=1800; fi
   now=$(date +%s); wait=$(( step - now % step + 20 ))
+  left=$(( END - SECONDS )); [ $left -lt 60 ] && break        # 時間快到就結束，避免超過 GitHub 的執行上限被強制取消
+  [ $wait -gt $left ] && wait=$left
   if trading_hours; then python watch.py "$wait" || sleep "$wait"; else sleep "$wait"; fi   # 盤中每 10 秒盯價
 done
