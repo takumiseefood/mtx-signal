@@ -178,6 +178,24 @@ def fetch_quote(market):
     return pick_quote((j.get("RtData") or {}).get("QuoteList") or [])
 
 
+def session_date(market, t=None):
+    """最近一個已經開盤的日盤（08:45）或夜盤（15:00）是哪一天開始的（跳過週末，未考慮國定假日）"""
+    t = t or now(); d = t.date(); start = dt.time(8, 45) if market == "0" else dt.time(15, 0)
+    while d.weekday() >= 5 or (d == t.date() and t.time() < start):
+        d -= dt.timedelta(days=1)
+    return d
+
+
+def valid_bar(k):
+    """K棒時間合理：不在未來、不在週六 05:00 之後或週日"""
+    x = dt.datetime.strptime(k, "%Y-%m-%d %H:%M").replace(tzinfo=TZ)
+    if x > now(): return False
+    if x.weekday() == 6: return False
+    if x.weekday() == 5 and x.hour * 100 + x.minute >= 500: return False
+    if x.weekday() == 0 and x.hour * 100 + x.minute < 845: return False
+    return True
+
+
 def fetch_minutes(market, log):
     """期交所行情網 1 分K（本時段完整），組成 60 分K。回傳 {開始時間: bar}"""
     q = fetch_quote(market)
@@ -189,17 +207,13 @@ def fetch_minutes(market, log):
     d = json.loads(urllib.request.urlopen(req, timeout=20).read().decode()).get("RtData") or {}
     ticks = d.get("Ticks") or []
     if not ticks: return {}
-    base = dt.datetime.strptime(q["CDate"], "%Y%m%d").replace(tzinfo=TZ)
+    # 期交所的 CDate 在週末／換日後不可靠，改用「最近一個已開盤的時段」推算日期
+    base = dt.datetime.combine(session_date(market), dt.time(), TZ)
     def stamp(T, shift=0):      # T＝該分鐘結束時間 HHMMSS → 該分鐘開始時間
         hh, mm = int(T[:2]), int(T[2:4])
         day = base + dt.timedelta(days=shift + (1 if market == "1" and hh < 15 else 0))
         return day.replace(hour=hh, minute=mm) - dt.timedelta(minutes=1)
-    lastx = None
-    for row in reversed(ticks):
-        try: lastx = stamp(str(row[0]).zfill(6)); break
-        except ValueError: continue
-    if lastx is None: return {}
-    shift = -1 if lastx > now() + dt.timedelta(minutes=10) else 0   # 日期若是隔日交易日就往回調
+    shift = 0
     out = {}
     for T, o, h, l, c, *_ in ticks:
         try: x = stamp(str(T).zfill(6), shift)
@@ -219,6 +233,7 @@ def fetch_minutes(market, log):
 def update_live(bars, log):
     st = json.load(open(LIVE)) if os.path.exists(LIVE) else {"bars": {}, "sess": {}}
     t = now(); k = bar_start(t)
+    if k and not valid_bar(k): k = None      # 週末不組即時K棒
     # 已有精確資料的近似K棒丟掉
     st["bars"] = {kk: b for kk, b in st["bars"].items() if kk not in bars}
     if k:
@@ -245,10 +260,11 @@ def update_live(bars, log):
                 if kk not in bars: st["bars"][kk] = b
         except Exception as ex:
             log.append(f"60分 1分K失敗（{mk}）：{ex}")
+    st["bars"] = {kk: v for kk, v in st["bars"].items() if valid_bar(kk)}
     f5 = set(load5())
-    b5 = {kk: v for kk, v in (st.get("bars5") or {}).items() if kk not in f5}
+    b5 = {kk: v for kk, v in (st.get("bars5") or {}).items() if kk not in f5 and valid_bar(kk)}
     b5.update({kk: v for kk, v in LIVE5.items() if kk not in f5})
-    st["bars5"] = {kk: b5[kk] for kk in sorted(b5)[-400:]}
+    st["bars5"] = {kk: b5[kk] for kk in [x for x in sorted(b5) if valid_bar(x)][-400:]}
     os.makedirs(SITE, exist_ok=True); json.dump(st, open(LIVE, "w"))
     return st["bars"], k
 
