@@ -1,0 +1,14 @@
+name: probe
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          curl -s "https://ntfy.sh/$NTFY_TOPIC/json?poll=1&since=48h" | python3 -c "
+          import json,sys,datetime as dt
+          for l in sys.stdin:
+              m=json.loads(l); t=dt.datetime.fromtimestamp(m['time'],dt.timezone(dt.timedelta(hours=8))).strftime('%m-%d %H:%M:%S')
+              print(t, m.get('event'), repr(m.get('title')), repr((m.get('message') or '')[:80]))"
