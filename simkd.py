@@ -20,6 +20,7 @@ import sim60 as M
 SIM_START = "2026-11-11 12:00"
 MULT = 2.0
 K60_L, K60_S = 50, 50   # 60分K 門檻：做多要低於 50 且上彎；做空要高於 50 且下彎
+DIR = "cross"          # 方向："cross"＝20MA/120MA（現行）；"px20"＝60分收盤對 20MA
 ENTRY = "both"        # 進場時機："both"＝60分KD<50上彎＋5分KD<50黃金交叉（現行）；"5m50"＝只看5分；"60kd"＝60分KD＋5分交叉（不限50）
 ADJ_MIN = 50          # 防守價變動達 50 點才記一筆調整紀錄
 SIDE = {1: "做多", -1: "做空", 0: "空手"}
@@ -86,7 +87,10 @@ def replay(F, H):
             if rec is None: rec = cur; adj.append(dict(t=b["t"], frm=None, to=cur))
             elif abs(cur - rec) >= ADJ_MIN: adj.append(dict(t=b["t"], frm=rec, to=cur)); rec = cur
         a20, a120 = (ind["ma20"][c], ind["ma120"][c]) if c >= 1 else (None, None)
-        tr = 0 if a20 is None or a120 is None else (1 if a20 > a120 else -1)
+        if DIR == "px20":          # 60分K 收盤在 20MA 之上偏多、之下偏空
+            tr = 0 if a20 is None else (1 if H[c]["c"] > a20 else -1)
+        else:                      # 60分 20MA 與 120MA 交叉
+            tr = 0 if a20 is None or a120 is None else (1 if a20 > a120 else -1)
         if pos and tr != pos: act = 0
         if pos == 0 and tr:
             gx = K5[i] > D5[i] and K5[i - 1] <= D5[i - 1]; dx = K5[i] < D5[i] and K5[i - 1] >= D5[i - 1]
